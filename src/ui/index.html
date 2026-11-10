@@ -77,64 +77,67 @@
           <button class="btn-icon" id="drawer-close-btn">✕</button>
         </div>
 
-        <!-- Quick Navigation Links (Requirement 2) -->
-        <div class="drawer-section">
-          <div class="drawer-section-title">Navegación Rápida</div>
-          <div style="display: flex; flex-direction: column; gap: 8px;">
-            <button class="drawer-nav-btn" onclick="window.app.navigate('library'); ProfileDrawer.close();">
-              <span style="font-size: 16px;">📚</span> Biblioteca de Mazos
-            </button>
-            <button class="drawer-nav-btn" onclick="window.app.navigate('creator'); ProfileDrawer.close();">
-              <span style="font-size: 16px;">✍️</span> Laboratorio de Creación
-            </button>
-            <button class="drawer-nav-btn" onclick="window.app.openExplorerDefault(); ProfileDrawer.close();">
-              <span style="font-size: 16px;">🔍</span> Explorador y Editor de Palabras
-            </button>
-            <button class="drawer-nav-btn" onclick="window.app.navigate('dashboard'); ProfileDrawer.close();">
-              <span style="font-size: 16px;">📊</span> Dashboard de Métricas
-            </button>
-          </div>
-        </div>
-
-        <div class="drawer-section">
-          <div class="drawer-section-title">Usuario</div>
-          <div class="form-group">
-            <label class="form-label">Nombre del Estudiante</label>
-            <input type="text" id="profile-name" class="form-control" />
-          </div>
-        </div>
-
-        <div class="drawer-section">
-          <div class="drawer-section-title">Audio y Pronunciación</div>
-          <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
-            <label class="form-label" style="margin: 0;">Sonidos de Quiz (Web Audio)</label>
-            <input type="checkbox" id="profile-sound-toggle" style="width: 18px; height: 18px; cursor: pointer;" />
-          </div>
-          <div class="form-group">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-              <label class="form-label" style="margin: 0;">Velocidad TTS</label>
-              <span id="profile-tts-speed-val" style="font-size: 13px; font-weight: 700; color: var(--accent-cyan);">0.85x</span>
+        <!-- Scrollable Drawer Content Container -->
+        <div class="drawer-body sidebar-content">
+          <!-- Quick Navigation Links (Requirement 2) -->
+          <div class="drawer-section">
+            <div class="drawer-section-title">Navegación Rápida</div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <button class="drawer-nav-btn" onclick="window.app.navigate('library'); ProfileDrawer.close();">
+                <span style="font-size: 16px;">📚</span> Biblioteca de Mazos
+              </button>
+              <button class="drawer-nav-btn" onclick="window.app.navigate('creator'); ProfileDrawer.close();">
+                <span style="font-size: 16px;">✍️</span> Laboratorio de Creación
+              </button>
+              <button class="drawer-nav-btn" onclick="window.app.openExplorerDefault(); ProfileDrawer.close();">
+                <span style="font-size: 16px;">🔍</span> Explorador y Editor de Palabras
+              </button>
+              <button class="drawer-nav-btn" onclick="window.app.navigate('dashboard'); ProfileDrawer.close();">
+                <span style="font-size: 16px;">📊</span> Dashboard de Métricas
+              </button>
             </div>
-            <input type="range" id="profile-tts-speed" min="0.2" max="1.0" step="0.05" value="0.85" style="width: 100%; cursor: pointer;" />
           </div>
-        </div>
 
-        <div class="drawer-section">
-          <div class="drawer-section-title">Objetivos & Disciplina</div>
-          <div class="form-group">
-            <label class="form-label">Meta Diaria de Estudio (Horas)</label>
-            <input type="number" id="profile-daily-goal" class="form-control" step="0.1" min="0.1" max="10" />
+          <div class="drawer-section">
+            <div class="drawer-section-title">Usuario</div>
+            <div class="form-group">
+              <label class="form-label">Nombre del Estudiante</label>
+              <input type="text" id="profile-name" class="form-control" />
+            </div>
           </div>
-        </div>
 
-        <div class="drawer-section">
-          <div class="drawer-section-title">Modo Tutor / Vinculación</div>
-          <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
-            <label class="form-label" style="margin: 0;">Activar Modo Tutor</label>
-            <input type="checkbox" id="profile-tutor-toggle" style="width: 18px; height: 18px; cursor: pointer;" />
+          <div class="drawer-section">
+            <div class="drawer-section-title">Audio y Pronunciación</div>
+            <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+              <label class="form-label" style="margin: 0;">Sonidos de Quiz (Web Audio)</label>
+              <input type="checkbox" id="profile-sound-toggle" style="width: 18px; height: 18px; cursor: pointer;" />
+            </div>
+            <div class="form-group">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                <label class="form-label" style="margin: 0;">Velocidad TTS</label>
+                <span id="profile-tts-speed-val" style="font-size: 13px; font-weight: 700; color: var(--accent-cyan);">0.85x</span>
+              </div>
+              <input type="range" id="profile-tts-speed" min="0.2" max="1.0" step="0.05" value="0.85" style="width: 100%; cursor: pointer;" />
+            </div>
           </div>
-          <div style="font-size: 12px; color: var(--text-dim); margin-top: 6px;">
-            Código de vinculación único: <strong id="profile-tutor-code" style="color: var(--primary); font-family: var(--font-mono); font-size: 14px;">LEX789</strong>
+
+          <div class="drawer-section">
+            <div class="drawer-section-title">Objetivos & Disciplina</div>
+            <div class="form-group">
+              <label class="form-label">Meta Diaria de Estudio (Horas)</label>
+              <input type="number" id="profile-daily-goal" class="form-control" step="0.1" min="0.1" max="10" />
+            </div>
+          </div>
+
+          <div class="drawer-section">
+            <div class="drawer-section-title">Modo Tutor / Vinculación</div>
+            <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+              <label class="form-label" style="margin: 0;">Activar Modo Tutor</label>
+              <input type="checkbox" id="profile-tutor-toggle" style="width: 18px; height: 18px; cursor: pointer;" />
+            </div>
+            <div style="font-size: 12px; color: var(--text-dim); margin-top: 6px;">
+              Código de vinculación único: <strong id="profile-tutor-code" style="color: var(--primary); font-family: var(--font-mono); font-size: 14px;">LEX789</strong>
+            </div>
           </div>
         </div>
       </div>
