@@ -73,10 +73,10 @@ class FlashcardsView {
                 <div class="card-target-word">${FlashcardsView.escapeHtml(displayTarget)}</div>
                 <div class="card-phrase-context">${highlightedPhrase}</div>
                 <div class="card-audio-controls" onclick="event.stopPropagation()">
-                  <button class="btn-audio-pill" onclick="FlashcardsView.playWordAudio('${FlashcardsView.escapeHtml(word.targetText).replace(/'/g, "\\'")}')">
+                  <button class="btn-audio-pill" onclick="FlashcardsView.playWordAudio()">
                     🔊 Palabra (1 / W)
                   </button>
-                  <button class="btn-audio-pill" onclick="FlashcardsView.playPhraseAudio('${FlashcardsView.escapeHtml(word.phrase).replace(/'/g, "\\'")}')">
+                  <button class="btn-audio-pill" onclick="FlashcardsView.playPhraseAudio()">
                     🎧 Frase Completa (2 / S)
                   </button>
                 </div>
@@ -170,14 +170,22 @@ class FlashcardsView {
   }
 
   static playWordAudio(text) {
-    if (window.ttsService) {
-      window.ttsService.speak(text);
+    if (!text && this.session && this.session.words && this.session.words[this.currentIndex]) {
+      text = this.session.words[this.currentIndex].targetText;
+    }
+    if (window.ttsService && text) {
+      const clean = String(text).replace(/<[^>]*>/g, '').trim();
+      window.ttsService.speak(clean);
     }
   }
 
   static playPhraseAudio(text) {
-    if (window.ttsService) {
-      window.ttsService.speak(text);
+    if (!text && this.session && this.session.words && this.session.words[this.currentIndex]) {
+      text = this.session.words[this.currentIndex].phrase;
+    }
+    if (window.ttsService && text) {
+      const clean = String(text).replace(/<[^>]*>/g, '').trim();
+      window.ttsService.speak(clean);
     }
   }
 

@@ -516,7 +516,12 @@ class LibraryView {
     });
   }
 
-  static openCreateDeckModal() {
+  static openCreateDeckModal(onCreated = null) {
+    if (window.app && typeof window.app.openCreateDeckModal === 'function') {
+      window.app.openCreateDeckModal(onCreated || (() => LibraryView.render()));
+      return;
+    }
+
     const html = `
       <div class="form-group">
         <label class="form-label">Nombre del Mazo</label>

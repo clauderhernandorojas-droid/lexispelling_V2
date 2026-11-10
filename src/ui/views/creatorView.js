@@ -10,23 +10,35 @@ class CreatorView {
     this.currentDeckId = null;
   }
 
+  static escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   static async render() {
     const container = document.getElementById('view-creator');
     if (!container) return;
 
     const decks = await window.api.getDecks();
+    window.store.set('decks', decks);
     this.selectedTokens = new Set();
+    this.selectedTranslationTokens = new Set();
 
     const activeExplorerDeckId = window.store.get('activeExplorerDeckId');
-    if (activeExplorerDeckId) {
+    if (activeExplorerDeckId && decks.some(d => d.id === activeExplorerDeckId)) {
       this.currentDeckId = activeExplorerDeckId;
-    } else if (!this.currentDeckId && decks.length > 0) {
+    } else if ((!this.currentDeckId || !decks.some(d => d.id === this.currentDeckId)) && decks.length > 0) {
       this.currentDeckId = decks[0].id;
     }
 
     let deckOptionsHtml = '';
     decks.forEach(d => {
-      deckOptionsHtml += `<option value="${d.id}" ${d.id === this.currentDeckId ? 'selected' : ''}>${d.name}</option>`;
+      deckOptionsHtml += `<option value="${d.id}" ${d.id === this.currentDeckId ? 'selected' : ''}>${CreatorView.escapeHtml(d.name)}</option>`;
     });
     deckOptionsHtml += `<option value="__NEW__">+ Crear nuevo mazo...</option>`;
 
@@ -42,7 +54,10 @@ class CreatorView {
 
         <!-- 1. Deck Selector Card -->
         <div class="creator-card">
-          <div class="creator-card-title">1. Mazo Destino</div>
+          <div class="creator-card-title" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>1. Mazo Destino</span>
+            <button type="button" class="btn-secondary" style="font-size: 11px; padding: 2px 8px;" onclick="CreatorView.openCreateDeckModal()">+ Nuevo Mazo</button>
+          </div>
           <select id="creator-deck-select" class="form-control" style="font-size: 15px; font-weight: 600;">
             ${deckOptionsHtml}
           </select>
@@ -122,11 +137,14 @@ class CreatorView {
     const targetTrInput = document.getElementById('creator-target-tr');
 
     if (deckSelect) {
-      deckSelect.onchange = (e) => {
+      deckSelect.onchange = async (e) => {
         if (e.target.value === '__NEW__') {
-          window.LibraryView.openCreateDeckModal();
+          // Revert select immediately to previous valid deck so it never gets stuck in __NEW__
+          e.target.value = this.currentDeckId || '';
+          await CreatorView.openCreateDeckModal();
         } else {
           this.currentDeckId = e.target.value;
+          window.store.set('activeExplorerDeckId', this.currentDeckId);
         }
       };
     }
@@ -279,6 +297,48 @@ class CreatorView {
     textarea.setSelectionRange(start + openTag.length, start + openTag.length + (selected.length || 5));
   }
 
+  static async openCreateDeckModal() {
+    const handleCreated = async (newDeck) => {
+      this.currentDeckId = newDeck.id;
+      window.store.set('activeExplorerDeckId', newDeck.id);
+      await CreatorView.reloadDecks(newDeck.id);
+    };
+
+    if (window.app && typeof window.app.openCreateDeckModal === 'function') {
+      await window.app.openCreateDeckModal(handleCreated);
+    } else if (window.LibraryView && typeof window.LibraryView.openCreateDeckModal === 'function') {
+      await window.LibraryView.openCreateDeckModal(handleCreated);
+    }
+  }
+
+  static async reloadDecks(selectedDeckId = null) {
+    const deckSelect = document.getElementById('creator-deck-select');
+    if (!deckSelect) return;
+
+    let decks = [];
+    if (window.api && window.api.getDecks) {
+      decks = await window.api.getDecks();
+      window.store.set('decks', decks);
+    } else {
+      decks = window.store.get('decks') || [];
+    }
+
+    const targetId = selectedDeckId || this.currentDeckId || (decks.length > 0 ? decks[0].id : null);
+    this.currentDeckId = targetId;
+    if (targetId) {
+      window.store.set('activeExplorerDeckId', targetId);
+    }
+
+    let optionsHtml = '';
+    decks.forEach(d => {
+      optionsHtml += `<option value="${d.id}" ${d.id === targetId ? 'selected' : ''}>${CreatorView.escapeHtml(d.name)}</option>`;
+    });
+    optionsHtml += `<option value="__NEW__">+ Crear nuevo mazo...</option>`;
+
+    deckSelect.innerHTML = optionsHtml;
+    deckSelect.value = targetId || '';
+  }
+
   static clearForm() {
     const phraseInput = document.getElementById('creator-phrase-input');
     const targetTr = document.getElementById('creator-target-tr');
@@ -297,65 +357,82 @@ class CreatorView {
   }
 
   static async saveAndContinue() {
-    const deckSelect = document.getElementById('creator-deck-select');
-    const phraseInput = document.getElementById('creator-phrase-input');
-    const targetTr = document.getElementById('creator-target-tr');
-    const phraseTr = document.getElementById('creator-phrase-tr');
-    const notesInput = document.getElementById('creator-notes-input');
+    try {
+      const deckSelect = document.getElementById('creator-deck-select');
+      const phraseInput = document.getElementById('creator-phrase-input');
+      const targetTr = document.getElementById('creator-target-tr');
+      const phraseTr = document.getElementById('creator-phrase-tr');
+      const notesInput = document.getElementById('creator-notes-input');
 
-    const deckId = deckSelect ? deckSelect.value : null;
-    const phrase = phraseInput ? phraseInput.value.trim() : '';
-    const targetTranslation = targetTr ? targetTr.value.trim() : '';
-    const phraseTranslation = phraseTr ? phraseTr.value.trim() : '';
-    const notes = notesInput ? notesInput.value.trim() : '';
+      let deckId = (deckSelect && deckSelect.value && deckSelect.value !== '__NEW__')
+        ? deckSelect.value
+        : this.currentDeckId;
 
-    if (!deckId || deckId === '__NEW__') {
-      window.ModalManager.showToast('Por favor selecciona un mazo válido', 'error');
-      return;
-    }
+      if (!deckId || deckId === '__NEW__') {
+        window.ModalManager.showToast('Por favor selecciona o crea un mazo válido', 'error');
+        return;
+      }
 
-    if (!phrase) {
-      window.ModalManager.showToast('Por favor ingresa una oración de contexto', 'error');
-      return;
-    }
+      const phrase = phraseInput ? phraseInput.value.trim() : '';
+      const targetTranslation = targetTr ? targetTr.value.trim() : '';
+      const phraseTranslation = phraseTr ? phraseTr.value.trim() : '';
+      const notes = notesInput ? notesInput.value.trim() : '';
 
-    if (this.selectedTokens.size === 0) {
-      window.ModalManager.showToast('Por favor toca al menos un chip para marcar la palabra a evaluar', 'error');
-      return;
-    }
+      if (!phrase) {
+        window.ModalManager.showToast('Por favor ingresa una oración de contexto', 'error');
+        return;
+      }
 
-    const parser = (typeof window !== 'undefined' && window.PhraseSegmentParser) || 
-                   (typeof PhraseSegmentParser !== 'undefined' ? PhraseSegmentParser : null);
-    const parsed = parser ? parser.parse(phrase, [...this.selectedTokens]) : { unifiedTargetText: [...this.selectedTokens].join(' ') };
-    const wordId = 'w_' + Date.now();
+      if (this.selectedTokens.size === 0) {
+        window.ModalManager.showToast('Por favor toca al menos un chip para marcar la palabra a evaluar', 'error');
+        return;
+      }
 
-    // Section 4.3 & Rule 6: Highlight selected translation token in bold within phraseTranslation
-    let finalPhraseTranslation = phraseTranslation;
-    if (this.selectedTranslationTokens.size > 0 && finalPhraseTranslation) {
-      for (const token of this.selectedTranslationTokens) {
-        const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        finalPhraseTranslation = finalPhraseTranslation.replace(
-          new RegExp(`(?<!<b>)(?<![\\p{L}\\p{N}_])${escaped}(?![\\p{L}\\p{N}_])(?!<\\/b>)`, 'gui'),
-          '<b>$&</b>'
-        );
+      const parser = (typeof window !== 'undefined' && window.PhraseSegmentParser) || 
+                     (typeof PhraseSegmentParser !== 'undefined' ? PhraseSegmentParser : null);
+      const parsed = parser ? parser.parse(phrase, [...this.selectedTokens]) : { unifiedTargetText: [...this.selectedTokens].join(' ') };
+      const wordId = 'w_' + Date.now();
+
+      // Section 4.3 & Rule 6: Highlight selected translation token in bold within phraseTranslation
+      let finalPhraseTranslation = phraseTranslation;
+      if (this.selectedTranslationTokens.size > 0 && finalPhraseTranslation) {
+        for (const token of this.selectedTranslationTokens) {
+          const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          finalPhraseTranslation = finalPhraseTranslation.replace(
+            new RegExp(`(?<!<b>)(?<![\\p{L}\\p{N}_])${escaped}(?![\\p{L}\\p{N}_])(?!<\\/b>)`, 'gui'),
+            '<b>$&</b>'
+          );
+        }
+      }
+
+      const finalTargetTranslation = targetTranslation || [...this.selectedTranslationTokens].join(' ');
+
+      if (window.api && window.api.createWord) {
+        await window.api.createWord({
+          id: wordId,
+          deckId,
+          phrase,
+          targetTokens: [...this.selectedTokens],
+          targetText: parsed.unifiedTargetText,
+          notes,
+          phraseTranslation: finalPhraseTranslation,
+          targetTranslation: finalTargetTranslation
+        });
+      }
+
+      window.ModalManager.showToast(`Palabra "${parsed.unifiedTargetText}" guardada con éxito`, 'success');
+      CreatorView.clearForm();
+
+      // Keep current deck selected for the next word
+      if (deckSelect && deckId) {
+        deckSelect.value = deckId;
+      }
+    } catch (err) {
+      console.error('CreatorView.saveAndContinue error:', err);
+      if (typeof window !== 'undefined' && window.ModalManager) {
+        window.ModalManager.showToast(`Error al guardar palabra: ${err.message}`, 'error');
       }
     }
-
-    const finalTargetTranslation = targetTranslation || [...this.selectedTranslationTokens].join(' ');
-
-    await window.api.createWord({
-      id: wordId,
-      deckId,
-      phrase,
-      targetTokens: [...this.selectedTokens],
-      targetText: parsed.unifiedTargetText,
-      notes,
-      phraseTranslation: finalPhraseTranslation,
-      targetTranslation: finalTargetTranslation
-    });
-
-    window.ModalManager.showToast(`Palabra "${parsed.unifiedTargetText}" guardada con éxito`, 'success');
-    CreatorView.clearForm();
   }
 }
 

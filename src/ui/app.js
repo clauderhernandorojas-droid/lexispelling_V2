@@ -21,7 +21,7 @@ class App {
         window.soundFeedback.setMuted(!profile.soundEnabled);
       }
       if (window.ttsService) {
-        window.ttsService.setSpeechRate(profile.ttsSpeechRate || 0.85);
+        window.ttsService.setSpeechRate(profile.ttsSpeechRate || 0.88);
         window.ttsService.setLanguage(profile.learnLanguageCode || 'en');
       }
     }
@@ -295,6 +295,71 @@ class App {
 
   refreshCurrentView() {
     this.navigate(this.currentViewName);
+  }
+
+  async openCreateDeckModal(onCreated = null) {
+    const html = `
+      <div class="form-group">
+        <label class="form-label">Nombre del Mazo</label>
+        <input type="text" id="new-deck-name" class="form-control" placeholder="Ej: C1 Advanced Expressions" autofocus />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descripción</label>
+        <textarea id="new-deck-desc" class="form-control" rows="3" placeholder="Propósito u objetivo de este mazo..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Color Distintivo</label>
+        <input type="color" id="new-deck-color" value="#6366f1" style="width: 100%; height: 38px; border: none; border-radius: 6px; cursor: pointer;" />
+      </div>
+    `;
+
+    window.ModalManager.openModal({
+      title: 'Crear Nuevo Mazo',
+      bodyHtml: html,
+      confirmText: 'Crear Mazo',
+      cancelText: 'Cancelar',
+      onConfirm: async () => {
+        const nameInput = document.getElementById('new-deck-name');
+        const descInput = document.getElementById('new-deck-desc');
+        const colorInput = document.getElementById('new-deck-color');
+
+        const name = nameInput ? nameInput.value.trim() : '';
+        if (!name) {
+          window.ModalManager.showToast('El nombre del mazo es obligatorio', 'error');
+          return false;
+        }
+
+        const id = 'deck_' + Date.now();
+        const newDeck = {
+          id,
+          name,
+          description: descInput ? descInput.value.trim() : '',
+          color: colorInput ? colorInput.value : '#6366f1'
+        };
+
+        if (window.api && window.api.createDeck) {
+          await window.api.createDeck(newDeck);
+        }
+
+        // Refresh global decks store
+        if (window.api && window.api.getDecks) {
+          const updatedDecks = await window.api.getDecks();
+          window.store.set('decks', updatedDecks);
+        }
+
+        window.ModalManager.showToast(`Mazo "${name}" creado con éxito`, 'success');
+
+        if (typeof onCreated === 'function') {
+          await onCreated(newDeck);
+        } else if (this.currentViewName === 'library' && window.LibraryView) {
+          window.LibraryView.render();
+        } else if (this.currentViewName === 'creator' && window.CreatorView) {
+          await window.CreatorView.reloadDecks(newDeck.id);
+        }
+
+        return true;
+      }
+    });
   }
 }
 
