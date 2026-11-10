@@ -38,6 +38,15 @@ class QuizView {
       .replace(/'/g, '&#39;');
   }
 
+  static formatSafeTranslation(text) {
+    if (!text) return '';
+    const safe = QuizView.escapeHtml(text);
+    return safe
+      .replace(/&lt;b&gt;(.*?)&lt;\/b&gt;/gi, '<b>$1</b>')
+      .replace(/&lt;strong&gt;(.*?)&lt;\/strong&gt;/gi, '<strong>$1</strong>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  }
+
   /**
    * Resilient resolver for PhraseSegmentParser.
    * Guarantees segment parsing even if script execution order varies.
@@ -524,7 +533,7 @@ class QuizView {
 
             <!-- Translations Box (Section 4.5: phrase always visible, word hidden during active hint) -->
             <div class="quiz-translations-box">
-              <div class="phrase-translation-text">${QuizView.escapeHtml(this.currentWord.phraseTranslation || '')}</div>
+              <div class="phrase-translation-text">${QuizView.formatSafeTranslation(this.currentWord.phraseTranslation || '')}</div>
               <div class="word-translation-text ${this.activeHint ? 'hidden' : ''}">
                 💡 Significado: ${QuizView.escapeHtml(this.currentWord.targetTranslation || 'Sin traducción')}
               </div>
@@ -544,7 +553,7 @@ class QuizView {
                     ${QuizView.escapeHtml(this.activeHint.title || 'Pista Contextual Distorsionada')}
                   </div>
                   <div class="distorted-phrase-mono hint-distorted-phrase">
-                    ${this.showHintTranslation ? QuizView.escapeHtml(this.activeHint.phraseTranslation) : (this.activeHint.distortedHtml || QuizView.escapeHtml(this.activeHint.distortedPhrase))}
+                    ${this.showHintTranslation ? QuizView.formatSafeTranslation(this.activeHint.phraseTranslation) : (this.activeHint.distortedHtml || QuizView.escapeHtml(this.activeHint.distortedPhrase))}
                   </div>
                   <div class="hint-toggle-row">
                     <button class="btn-secondary" style="font-size: 11px; padding: 4px 10px;" onclick="QuizView.toggleHintDisplay()">
@@ -577,7 +586,7 @@ class QuizView {
                   </div>
                   ${this.currentWord.phraseTranslation ? `
                     <div class="post-word-phrase-translation">
-                      ${QuizView.escapeHtml(this.currentWord.phraseTranslation)}
+                      ${QuizView.formatSafeTranslation(this.currentWord.phraseTranslation)}
                     </div>
                   ` : ''}
                 </div>

@@ -373,7 +373,7 @@ class CreatorView {
         return;
       }
 
-      const phrase = phraseInput ? phraseInput.value.trim() : '';
+      let phrase = phraseInput ? phraseInput.value.trim() : '';
       const targetTranslation = targetTr ? targetTr.value.trim() : '';
       const phraseTranslation = phraseTr ? phraseTr.value.trim() : '';
       const notes = notesInput ? notesInput.value.trim() : '';
@@ -381,6 +381,11 @@ class CreatorView {
       if (!phrase) {
         window.ModalManager.showToast('Por favor ingresa una oración de contexto', 'error');
         return;
+      }
+
+      // Auto-punctuation: append '.' if sentence doesn't end in '.', '?', or '!'
+      if (!/[.?!]$/.test(phrase)) {
+        phrase += '.';
       }
 
       if (this.selectedTokens.size === 0) {
