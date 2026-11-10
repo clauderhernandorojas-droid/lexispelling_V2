@@ -9,7 +9,80 @@ class FlashcardsView {
     this.currentIndex = 0;
     this.isFlipped = false;
     this.reviewedCardIds = new Set();
+    this.sessionSeconds = 0;
+    this.timerInterval = null;
+    this.wordRate = (typeof TtsService !== 'undefined' && TtsService.getWordRate) ? TtsService.getWordRate() : 0.85;
+    this.phraseRate = (typeof TtsService !== 'undefined' && TtsService.getPhraseRate) ? TtsService.getPhraseRate() : 0.95;
     this.keyHandler = this.handleKeyDown.bind(this);
+  }
+
+  static startTimer() {
+    this.stopTimer();
+    this.sessionSeconds = 0;
+    this.timerInterval = setInterval(() => {
+      this.sessionSeconds++;
+      const timerEl = document.getElementById('flashcards-timer');
+      if (timerEl) {
+        timerEl.textContent = `⏱️ ${this.getFormattedTime()}`;
+      }
+    }, 1000);
+  }
+
+  static stopTimer() {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+    }
+  }
+
+  static getFormattedTime() {
+    const s = this.sessionSeconds || 0;
+    const mins = Math.floor(s / 60);
+    const secs = s % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+
+  static onWordSpeedChange(val) {
+    const rate = parseFloat(val);
+    if (isNaN(rate)) return;
+    this.wordRate = rate;
+    const tag = document.getElementById('speed-word-val');
+    if (tag) tag.textContent = `${rate.toFixed(2)}x`;
+    const slider = document.getElementById('speed-word-slider');
+    if (slider && parseFloat(slider.value) !== rate) slider.value = val;
+
+    if (typeof TtsService !== 'undefined' && typeof TtsService.setWordRate === 'function') {
+      TtsService.setWordRate(rate);
+    }
+    if (window.ttsService && typeof window.ttsService.setWordRate === 'function') {
+      window.ttsService.setWordRate(rate);
+    }
+  }
+
+  static onPhraseSpeedChange(val) {
+    const rate = parseFloat(val);
+    if (isNaN(rate)) return;
+    this.phraseRate = rate;
+    const tag = document.getElementById('speed-phrase-val');
+    if (tag) tag.textContent = `${rate.toFixed(2)}x`;
+    const slider = document.getElementById('speed-phrase-slider');
+    if (slider && parseFloat(slider.value) !== rate) slider.value = val;
+
+    if (typeof TtsService !== 'undefined' && typeof TtsService.setPhraseRate === 'function') {
+      TtsService.setPhraseRate(rate);
+    }
+    if (window.ttsService && typeof window.ttsService.setPhraseRate === 'function') {
+      window.ttsService.setPhraseRate(rate);
+    }
+  }
+
+  static formatSafeTranslation(text) {
+    if (!text) return '';
+    const safe = FlashcardsView.escapeHtml(text);
+    return safe
+      .replace(/&lt;b&gt;(.*?)&lt;\/b&gt;/gi, '<b>$1</b>')
+      .replace(/&lt;strong&gt;(.*?)&lt;\/strong&gt;/gi, '<strong>$1</strong>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
   }
 
   static render() {
@@ -26,8 +99,11 @@ class FlashcardsView {
     this.isFlipped = false;
     this.reviewedCardIds = new Set();
 
-    // Start Active Study Timer (Section 6.4)
-    window.activeTimer.start('study');
+    // Start visible stopwatch and active study timer
+    this.startTimer();
+    if (window.activeTimer) {
+      window.activeTimer.start('study');
+    }
 
     // Attach global keyboard listener
     window.removeEventListener('keydown', this.keyHandler);
@@ -37,8 +113,11 @@ class FlashcardsView {
   }
 
   static destroy() {
+    this.stopTimer();
     window.removeEventListener('keydown', this.keyHandler);
-    window.activeTimer.stop();
+    if (window.activeTimer) {
+      window.activeTimer.stop();
+    }
   }
 
   static updateCardUi() {
@@ -59,7 +138,10 @@ class FlashcardsView {
           <button class="appbar-exit-btn" onclick="FlashcardsView.exitSession()" title="Salir y volver a la Biblioteca">
             ✕ Volver a la Biblioteca
           </button>
-          <div class="flashcards-counter">Tarjeta ${this.currentIndex + 1} de ${total}</div>
+          <div class="flashcards-header-center">
+            <div class="flashcards-counter">Tarjeta ${this.currentIndex + 1} de ${total}</div>
+            <div class="flashcards-timer" id="flashcards-timer">⏱️ ${this.getFormattedTime()}</div>
+          </div>
           <div class="badge badge-new">${word.level !== null && word.level !== undefined ? 'Nivel ' + word.level : 'Nueva'}</div>
         </div>
 
@@ -81,33 +163,34 @@ class FlashcardsView {
                   </button>
                 </div>
               </div>
-              <div style="text-align: center; font-size: 12px; color: var(--text-dim);">
+              <div class="card-flip-hint">
                 Haz clic o pulsa [Espacio] para voltear
               </div>
             </div>
 
             <!-- Back Face -->
-            <div class="card-face card-face-back">
-              <div>
+            <div class="card-face card-face-back flashcard-back">
+              <div class="card-id-badge mono">${FlashcardsView.escapeHtml(word.id)}</div>
+              <div class="card-back-content">
                 <div class="back-section">
                   <div class="back-label">Traducción de la palabra</div>
-                  <div class="back-target-meaning">${word.targetTranslation || 'Sin traducción'}</div>
+                  <div class="back-target-meaning">${FlashcardsView.escapeHtml(word.targetTranslation || 'Sin traducción')}</div>
                 </div>
                 <div class="back-section">
                   <div class="back-label">Traducción de la frase</div>
-                  <div class="back-phrase-translation">${word.phraseTranslation || 'Sin traducción contextual'}</div>
+                  <div class="back-phrase-translation">${FlashcardsView.formatSafeTranslation(word.phraseTranslation || 'Sin traducción contextual')}</div>
                 </div>
+
+                ${word.notes ? `
+                  <div class="back-notes-box">
+                    <div class="back-label" style="color: var(--primary);">Notas Gramaticales</div>
+                    <div>${this.renderSimpleMarkdown(word.notes)}</div>
+                  </div>
+                ` : ''}
               </div>
 
-              ${word.notes ? `
-                <div class="back-notes-box">
-                  <div class="back-label" style="color: var(--primary);">Notas Gramaticales</div>
-                  <div>${this.renderSimpleMarkdown(word.notes)}</div>
-                </div>
-              ` : '<div></div>'}
-
-              <div style="text-align: center; font-size: 12px; color: var(--text-dim);">
-                Haz clic o pulsa [Espacio] para voltear al frente
+              <div class="card-flip-hint">
+                Haz clic o pulsa [Espacio] para volver al frente
               </div>
             </div>
           </div>
@@ -122,6 +205,22 @@ class FlashcardsView {
             <button class="btn-secondary" onclick="FlashcardsView.nextCard()" ${this.currentIndex === total - 1 ? 'disabled' : ''}>
               Siguiente →
             </button>
+          </div>
+
+          <!-- Speed Controls for Audio TTS -->
+          <div class="flashcards-speed-bar">
+            <div class="speed-control-group">
+              <span class="speed-icon" title="Velocidad de reproducción para Palabra">🔊</span>
+              <label for="speed-word-slider" class="speed-label">Palabra:</label>
+              <input type="range" class="speed-slider" id="speed-word-slider" min="0.5" max="1.5" step="0.05" value="${this.wordRate}" oninput="FlashcardsView.onWordSpeedChange(this.value)">
+              <span class="speed-value-tag" id="speed-word-val">${Number(this.wordRate).toFixed(2)}x</span>
+            </div>
+            <div class="speed-control-group">
+              <span class="speed-icon" title="Velocidad de reproducción para Frase">🎧</span>
+              <label for="speed-phrase-slider" class="speed-label">Frase:</label>
+              <input type="range" class="speed-slider" id="speed-phrase-slider" min="0.5" max="1.5" step="0.05" value="${this.phraseRate}" oninput="FlashcardsView.onPhraseSpeedChange(this.value)">
+              <span class="speed-value-tag" id="speed-phrase-val">${Number(this.phraseRate).toFixed(2)}x</span>
+            </div>
           </div>
 
           <button class="btn-ready-quiz" id="btn-ready-quiz" onclick="FlashcardsView.startQuiz()">
@@ -175,7 +274,11 @@ class FlashcardsView {
     }
     if (window.ttsService && text) {
       const clean = String(text).replace(/<[^>]*>/g, '').trim();
-      window.ttsService.speak(clean);
+      if (typeof window.ttsService.speakWord === 'function') {
+        window.ttsService.speakWord(clean);
+      } else {
+        window.ttsService.speak(clean, null, this.wordRate);
+      }
     }
   }
 
@@ -185,7 +288,11 @@ class FlashcardsView {
     }
     if (window.ttsService && text) {
       const clean = String(text).replace(/<[^>]*>/g, '').trim();
-      window.ttsService.speak(clean);
+      if (typeof window.ttsService.speakPhrase === 'function') {
+        window.ttsService.speakPhrase(clean);
+      } else {
+        window.ttsService.speak(clean, null, this.phraseRate);
+      }
     }
   }
 

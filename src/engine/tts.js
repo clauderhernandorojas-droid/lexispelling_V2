@@ -6,6 +6,8 @@
 class TtsService {
   constructor() {
     this.speechRate = 0.88;
+    this.wordRate = 0.85;
+    this.phraseRate = 0.95;
     this.pitch = 1.0;
     this.lang = 'en-US';
     this.voices = [];
@@ -30,9 +32,51 @@ class TtsService {
 
   setSpeechRate(rate) {
     const r = parseFloat(rate);
-    if (!isNaN(r) && r >= 0.2 && r <= 1.5) {
+    if (!isNaN(r) && r >= 0.2 && r <= 2.0) {
       this.speechRate = r;
     }
+  }
+
+  setWordRate(rate) {
+    const r = parseFloat(rate);
+    if (!isNaN(r) && r >= 0.2 && r <= 2.0) {
+      this.wordRate = r;
+    }
+  }
+
+  getWordRate() {
+    return this.wordRate;
+  }
+
+  setPhraseRate(rate) {
+    const r = parseFloat(rate);
+    if (!isNaN(r) && r >= 0.2 && r <= 2.0) {
+      this.phraseRate = r;
+    }
+  }
+
+  getPhraseRate() {
+    return this.phraseRate;
+  }
+
+  static setWordRate(rate) {
+    if (typeof window !== 'undefined' && window.ttsService) {
+      window.ttsService.setWordRate(rate);
+    }
+  }
+
+  static getWordRate() {
+    return (typeof window !== 'undefined' && window.ttsService) ? window.ttsService.getWordRate() : 0.85;
+  }
+
+  static setPhraseRate(rate) {
+    if (typeof window !== 'undefined' && window.ttsService) {
+      window.ttsService.setPhraseRate(rate);
+    }
+  }
+
+  static getPhraseRate() {
+    return (typeof window !== 'undefined' && window.ttsService) ? window.ttsService.getPhraseRate() : 0.95;
   }
 
   setLanguage(langCode) {
@@ -106,7 +150,7 @@ class TtsService {
     return sorted[0] || null;
   }
 
-  speak(text, onEnd = null) {
+  speak(text, onEnd = null, overrideRate = null) {
     if (typeof window === 'undefined' || !('speechSynthesis' in window) || !text) return;
 
     // 1. Clean HTML tags (such as <mark>, <span>, etc.) and decode basic entities
@@ -126,7 +170,10 @@ class TtsService {
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.rate = this.speechRate;
+    const effectiveRate = (overrideRate !== null && !isNaN(parseFloat(overrideRate)))
+      ? parseFloat(overrideRate)
+      : this.speechRate;
+    utterance.rate = effectiveRate;
     utterance.pitch = this.pitch;
     utterance.lang = this.lang;
 
@@ -144,6 +191,14 @@ class TtsService {
     window.speechSynthesis.speak(utterance);
   }
 
+  speakWord(text, onEnd = null) {
+    this.speak(text, onEnd, this.wordRate);
+  }
+
+  speakPhrase(text, onEnd = null) {
+    this.speak(text, onEnd, this.phraseRate);
+  }
+
   stop() {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
@@ -151,8 +206,9 @@ class TtsService {
   }
 }
 
-// Global instance in renderer
+// Global instance and class in renderer
 if (typeof window !== 'undefined') {
+  window.TtsService = TtsService;
   window.ttsService = new TtsService();
 }
 if (typeof module !== 'undefined' && module.exports) {
