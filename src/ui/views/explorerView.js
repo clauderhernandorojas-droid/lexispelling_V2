@@ -290,6 +290,29 @@ class ExplorerView {
     const word = this.words.find(w => w.id === wordId);
     if (!word) return;
 
+    // Rule 7 (Gap Analysis Punto 7): Critical reset warning before editing an existing word
+    window.ModalManager.openModal({
+      title: '⚠️ Advertencia Crítica de Reseteo',
+      bodyHtml: `
+        <div style="text-align: center; padding: 6px 0;">
+          <p style="font-size: 15px; color: var(--warning); font-weight: 700; margin-bottom: 12px;">
+            Modificar esta palabra reiniciará su progreso de memorización a palabra Nueva (Nivel 1).
+          </p>
+          <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">
+            Esta regla pedagógica garantiza que cualquier cambio estructural o de contexto sea reaprendido desde el inicio. ¿Deseas continuar?
+          </p>
+        </div>
+      `,
+      confirmText: 'Continuar y Editar',
+      cancelText: 'Cancelar',
+      onConfirm: () => {
+        ExplorerView.showEditWordForm(word);
+        return true;
+      }
+    });
+  }
+
+  static showEditWordForm(word) {
     const html = `
       <div class="form-group">
         <label class="form-label">Palabra / Término Objetivo</label>
@@ -311,12 +334,16 @@ class ExplorerView {
         <label class="form-label">Notas Gramaticales / Fonética</label>
         <textarea id="edit-word-notes" class="form-control" rows="2">${word.notes || ''}</textarea>
       </div>
+      <div style="font-size: 12px; color: var(--warning); margin-top: 10px;">
+        * Al guardar, la palabra volverá a estado "Nueva" (Nivel 1) para ser reaprendida en Flashcards y Quiz.
+      </div>
     `;
 
     window.ModalManager.openModal({
-      title: 'Editar Palabra',
+      title: 'Editar Palabra (Reinicia a Nivel 1)',
       bodyHtml: html,
-      confirmText: 'Guardar Cambios',
+      confirmText: 'Guardar y Reiniciar Progreso',
+      cancelText: 'Cancelar',
       onConfirm: async () => {
         const targetText = document.getElementById('edit-word-target').value.trim();
         const phrase = document.getElementById('edit-word-phrase').value.trim();
@@ -331,16 +358,23 @@ class ExplorerView {
 
         const tokens = targetText.split(/\s+/).filter(t => t.length > 0);
 
+        // Reset memory progress to New (Level 1) upon modification (Rule 7)
         await window.api.updateWord(word.id, {
           targetText,
           phrase,
           targetTokens: tokens,
           targetTranslation,
           phraseTranslation,
-          notes
+          notes,
+          isNew: 1,
+          level: 1,
+          nextReviewAt: null,
+          reachedLevel4At: null,
+          isLearned: 0,
+          lastReviewed: null
         });
 
-        window.ModalManager.showToast('Palabra actualizada con éxito', 'success');
+        window.ModalManager.showToast(`Palabra "${targetText}" actualizada y reiniciada a Nivel 1`, 'success');
         ExplorerView.render();
         return true;
       }
@@ -353,5 +387,10 @@ class ExplorerView {
 }
 
 ExplorerView.init();
-window.ExplorerView = ExplorerView;
+if (typeof window !== 'undefined') {
+  window.ExplorerView = ExplorerView;
+}
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { ExplorerView };
+}
 

@@ -55,7 +55,14 @@ class LibraryView {
       <!-- Floating Action Button (FAB) -->
       <div class="fab-container">
         <button class="fab-extended" id="fab-main-action">
-          ${selectedIds.size > 0 ? `⚡ Estudiar Selección (${LibraryView.calculateSelectedDueCount(decks, selectedIds)})` : '+ Crear Palabra'}
+          ${selectedIds.size > 0 ? (
+            (() => {
+              const stats = LibraryView.calculateSelectedStats(decks, selectedIds);
+              if (stats.reviewDue > 0) return `⚡ Evaluar Pendientes (${stats.reviewDue})`;
+              if (stats.newWords > 0) return `✨ Estudiar Nuevas (${stats.newWords})`;
+              return `⚡ Estudiar Selección`;
+            })()
+          ) : '+ Crear Palabra'}
         </button>
       </div>
     `;
@@ -87,7 +94,8 @@ class LibraryView {
         const isPaused = !deck.isActive;
         const total = deck.totalWords || 0;
         const mastered = deck.masteredWords || 0;
-        const due = deck.dueWords || 0;
+        const reviewDue = deck.reviewDueWords !== undefined ? deck.reviewDueWords : Math.max(0, (deck.dueWords || 0) - (deck.newWords || 0));
+        const newWords = deck.newWords !== undefined ? deck.newWords : 0;
         const pct = total > 0 ? Math.round((mastered / total) * 100) : 0;
 
         html += `
@@ -124,15 +132,19 @@ class LibraryView {
               <button class="btn-secondary" style="padding: 10px 14px;" onclick="LibraryView.openExplorer('${deck.id}')" title="Explorar palabras">
                 🔍 Explorar
               </button>
-              ${due > 0 && !isPaused ? `
-                <button class="btn-study-action pending" onclick="LibraryView.startStudySingle('${deck.id}')">
-                  Estudiar (${due})
+              ${reviewDue > 0 && !isPaused ? `
+                <button class="btn-study-action pending priority-eval-btn" onclick="LibraryView.startEvaluationSingle('${deck.id}')" title="Evaluar palabras pendientes de repaso hoy en Quiz">
+                  ⚡ Evaluar Pendientes (${reviewDue})
+                </button>
+              ` : (newWords > 0 && !isPaused ? `
+                <button class="btn-study-action new-study-btn" onclick="LibraryView.startNewWordsSingle('${deck.id}')" title="Estudiar nuevas palabras en Flashcards">
+                  ✨ Estudiar Nuevas (${newWords})
                 </button>
               ` : `
                 <button class="btn-study-action neutral" onclick="LibraryView.openExplorer('${deck.id}')">
                   Ver palabras (${total})
                 </button>
-              `}
+              `)}
             </div>
           </div>
         `;
@@ -341,14 +353,23 @@ class LibraryView {
     this.render();
   }
 
-  static calculateSelectedDueCount(decks, selectedIds) {
-    let total = 0;
+  static calculateSelectedStats(decks, selectedIds) {
+    let reviewDue = 0;
+    let newWords = 0;
+    let totalDue = 0;
     decks.forEach(d => {
       if (selectedIds.has(d.id)) {
-        total += (d.dueWords || 0);
+        const rDue = d.reviewDueWords !== undefined ? d.reviewDueWords : Math.max(0, (d.dueWords || 0) - (d.newWords || 0));
+        reviewDue += rDue;
+        newWords += (d.newWords || 0);
+        totalDue += (d.dueWords || 0);
       }
     });
-    return total;
+    return { reviewDue, newWords, totalDue };
+  }
+
+  static calculateSelectedDueCount(decks, selectedIds) {
+    return this.calculateSelectedStats(decks, selectedIds).totalDue;
   }
 
   static attachEvents(decks) {
@@ -581,13 +602,61 @@ class LibraryView {
     window.app.navigate('explorer');
   }
 
-  // --- Study Gateway (EstudioScreen / Compuerta de Estudio) ---
+  // --- Study Gateway (EstudioScreen / Compuerta de Estudio - Prioridad Pedagógica) ---
+  static async startEvaluationSingle(deckId) {
+    LibraryView.routeStudyFlow([deckId], 'review_due');
+  }
+
+  static async startNewWordsSingle(deckId) {
+    const decks = window.store.get('decks') || [];
+    const deck = decks.find(d => d.id === deckId);
+    const reviewDue = deck ? (deck.reviewDueWords !== undefined ? deck.reviewDueWords : Math.max(0, (deck.dueWords || 0) - (deck.newWords || 0))) : 0;
+
+    if (reviewDue > 0) {
+      window.ModalManager.openModal({
+        title: '⚠️ Prioridad Pedagógica: Evaluación Pendiente',
+        bodyHtml: `
+          <div style="text-align: center; padding: 6px 0;">
+            <p style="font-size: 15px; color: var(--warning); font-weight: 700; margin-bottom: 12px;">
+              Tienes ${reviewDue} palabra(s) pendiente(s) por evaluar hoy en este mazo.
+            </p>
+            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">
+              Por regla pedagógica de Lexispelling, debes completar primero tus quices de repaso pendientes antes de incorporar palabras nuevas a tu memoria de trabajo.
+            </p>
+          </div>
+        `,
+        confirmText: `Evaluar Pendientes (${reviewDue})`,
+        cancelText: 'Cancelar',
+        onConfirm: () => {
+          LibraryView.startEvaluationSingle(deckId);
+          return true;
+        }
+      });
+      return;
+    }
+
+    LibraryView.routeStudyFlow([deckId], 'new_only');
+  }
+
   static async startStudySingle(deckId) {
-    LibraryView.routeStudyFlow([deckId], 'normal');
+    const decks = window.store.get('decks') || [];
+    const deck = decks.find(d => d.id === deckId);
+    const reviewDue = deck ? (deck.reviewDueWords !== undefined ? deck.reviewDueWords : Math.max(0, (deck.dueWords || 0) - (deck.newWords || 0))) : 0;
+    if (reviewDue > 0) {
+      LibraryView.startEvaluationSingle(deckId);
+    } else {
+      LibraryView.startNewWordsSingle(deckId);
+    }
   }
 
   static async startStudyBatch(deckIds) {
-    LibraryView.routeStudyFlow(deckIds, 'normal');
+    const decks = window.store.get('decks') || [];
+    const stats = LibraryView.calculateSelectedStats(decks, new Set(deckIds));
+    if (stats.reviewDue > 0) {
+      LibraryView.routeStudyFlow(deckIds, 'review_due');
+    } else {
+      LibraryView.routeStudyFlow(deckIds, 'new_only');
+    }
   }
 
   static async routeStudyFlow(deckIds, mode = 'normal') {
@@ -637,4 +706,9 @@ class LibraryView {
 }
 
 LibraryView.init();
-window.LibraryView = LibraryView;
+if (typeof window !== 'undefined') {
+  window.LibraryView = LibraryView;
+}
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { LibraryView };
+}

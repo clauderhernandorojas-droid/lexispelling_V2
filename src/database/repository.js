@@ -31,8 +31,9 @@ class Repository {
         d.*,
         COUNT(w.id) AS totalWords,
         SUM(CASE WHEN (w.isLearned = 1 OR w.level = 4) THEN 1 ELSE 0 END) AS masteredWords,
-        SUM(CASE WHEN w.isActive = 1 AND (w.isNew = 1 OR w.nextReviewAt <= ?) THEN 1 ELSE 0 END) AS dueWords,
-        SUM(CASE WHEN w.isActive = 1 AND w.isNew = 1 THEN 1 ELSE 0 END) AS newWords
+        SUM(CASE WHEN w.isActive = 1 AND (w.isNew = 0 OR w.isNew IS NULL) AND w.nextReviewAt <= ? THEN 1 ELSE 0 END) AS reviewDueWords,
+        SUM(CASE WHEN w.isActive = 1 AND w.isNew = 1 THEN 1 ELSE 0 END) AS newWords,
+        SUM(CASE WHEN w.isActive = 1 AND (w.isNew = 1 OR w.nextReviewAt <= ?) THEN 1 ELSE 0 END) AS dueWords
       FROM decks d
       LEFT JOIN words w ON w.deckId = d.id
       GROUP BY d.id
@@ -233,16 +234,51 @@ class Repository {
           AND (isLearned = 1 OR level = 4)
         ORDER BY RANDOM()
       `;
-    } else {
-      // Normal SRS study: Due today or New words
+    } else if (mode === 'review_due') {
+      // Strictly due review words (Quiz priority)
       sql = `
         SELECT * FROM words
         WHERE deckId IN (${placeholders})
           AND isActive = 1
-          AND (isNew = 1 OR nextReviewAt <= ?)
-        ORDER BY isNew DESC, nextReviewAt ASC
+          AND (isNew = 0 OR isNew IS NULL)
+          AND nextReviewAt <= ?
+        ORDER BY nextReviewAt ASC
       `;
       params.push(todayStart);
+    } else if (mode === 'new_only') {
+      // Strictly new words (Flashcards)
+      sql = `
+        SELECT * FROM words
+        WHERE deckId IN (${placeholders})
+          AND isActive = 1
+          AND isNew = 1
+        ORDER BY createdAt ASC
+      `;
+    } else {
+      // Normal mode: Rule 5 Pedagogical Priority
+      // If there are words due for review today, evaluate pending words FIRST.
+      // New words enter flashcards only when there are no quices pending today.
+      const reviewRows = this.db.prepare(`
+        SELECT * FROM words
+        WHERE deckId IN (${placeholders})
+          AND isActive = 1
+          AND (isNew = 0 OR isNew IS NULL)
+          AND nextReviewAt <= ?
+        ORDER BY nextReviewAt ASC
+      `).all(...params, todayStart);
+
+      if (reviewRows.length > 0) {
+        return reviewRows.map(r => this._formatWordRow(r));
+      }
+
+      // No reviews due today -> study new words
+      sql = `
+        SELECT * FROM words
+        WHERE deckId IN (${placeholders})
+          AND isActive = 1
+          AND isNew = 1
+        ORDER BY createdAt ASC
+      `;
     }
 
     const rows = this.db.prepare(sql).all(...params);

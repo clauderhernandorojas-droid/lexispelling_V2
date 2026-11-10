@@ -6,6 +6,7 @@
 class CreatorView {
   static init() {
     this.selectedTokens = new Set();
+    this.selectedTranslationTokens = new Set();
     this.currentDeckId = null;
   }
 
@@ -67,14 +68,27 @@ class CreatorView {
 
         <!-- 3. Translations Card -->
         <div class="creator-card">
-          <div class="creator-card-title">3. Traducciones</div>
-          <div class="form-group">
-            <label class="form-label">Traducción de la palabra clave</label>
-            <input type="text" id="creator-target-tr" class="form-control" placeholder="Ej: cuidar de / ocuparse de" />
+          <div class="creator-card-title">
+            <span>3. Traducciones</span>
+            <span style="font-size: 11px; text-transform: none; color: var(--accent-cyan);">Toca los chips de la traducción para marcar el término</span>
           </div>
-          <div class="form-group" style="margin-bottom: 0;">
+          <div class="form-group">
             <label class="form-label">Traducción de la oración completa</label>
             <input type="text" id="creator-phrase-tr" class="form-control" placeholder="Ej: Decidió cuidar al cachorro callejero hasta que se recuperara." />
+          </div>
+
+          <div style="margin-top: 12px; font-size: 12px; color: var(--text-muted);">Chips de la traducción:</div>
+          <div class="token-chips-container" id="creator-tr-chips-container">
+            <span style="color: var(--text-dim); font-size: 13px; margin: auto;">Escribe una traducción arriba para generar chips interactivos...</span>
+          </div>
+
+          <div style="margin-top: 10px; font-size: 13px; color: var(--text-muted);">
+            Término traducido clave: <strong id="creator-tr-target-display" style="color: var(--accent-cyan); font-family: var(--font-mono);">(Ninguno seleccionado)</strong>
+          </div>
+
+          <div class="form-group" style="margin-top: 14px; margin-bottom: 0;">
+            <label class="form-label">Traducción de la palabra clave (autocompletada por chips o personalizada)</label>
+            <input type="text" id="creator-target-tr" class="form-control" placeholder="Ej: cuidar de / ocuparse de" />
           </div>
         </div>
 
@@ -104,6 +118,8 @@ class CreatorView {
   static attachEvents() {
     const deckSelect = document.getElementById('creator-deck-select');
     const phraseInput = document.getElementById('creator-phrase-input');
+    const phraseTrInput = document.getElementById('creator-phrase-tr');
+    const targetTrInput = document.getElementById('creator-target-tr');
 
     if (deckSelect) {
       deckSelect.onchange = (e) => {
@@ -120,13 +136,27 @@ class CreatorView {
         CreatorView.updateTokenChips(e.target.value);
       };
     }
+
+    if (phraseTrInput) {
+      phraseTrInput.oninput = (e) => {
+        CreatorView.updateTranslationChips(e.target.value);
+      };
+    }
+
+    if (targetTrInput) {
+      targetTrInput.oninput = () => {
+        delete targetTrInput.dataset.autoFilled;
+      };
+    }
   }
 
   static updateTokenChips(phrase) {
     const container = document.getElementById('creator-chips-container');
     if (!container) return;
 
-    const tokens = window.PhraseSegmentParser.extractClickableTokens(phrase);
+    const parser = (typeof window !== 'undefined' && window.PhraseSegmentParser) || 
+                   (typeof PhraseSegmentParser !== 'undefined' ? PhraseSegmentParser : null);
+    const tokens = parser ? parser.extractClickableTokens(phrase) : [];
 
     if (tokens.length === 0) {
       container.innerHTML = '<span style="color: var(--text-dim); font-size: 13px; margin: auto;">Escribe una frase arriba para generar chips interactivos...</span>';
@@ -170,8 +200,69 @@ class CreatorView {
     }
 
     const phrase = phraseInput ? phraseInput.value : '';
-    const parsed = window.PhraseSegmentParser.parse(phrase, [...this.selectedTokens]);
+    const parser = (typeof window !== 'undefined' && window.PhraseSegmentParser) || 
+                   (typeof PhraseSegmentParser !== 'undefined' ? PhraseSegmentParser : null);
+    const parsed = parser ? parser.parse(phrase, [...this.selectedTokens]) : { unifiedTargetText: '' };
     displayEl.textContent = parsed.unifiedTargetText || [...this.selectedTokens].join(' ');
+  }
+
+  // --- Translation Chips (Section 4.3 & Rule 6) ---
+  static updateTranslationChips(phraseTr) {
+    const container = document.getElementById('creator-tr-chips-container');
+    if (!container) return;
+
+    const parser = (typeof window !== 'undefined' && window.PhraseSegmentParser) || 
+                   (typeof PhraseSegmentParser !== 'undefined' ? PhraseSegmentParser : null);
+    const tokens = parser ? parser.extractClickableTokens(phraseTr) : [];
+
+    if (tokens.length === 0) {
+      container.innerHTML = '<span style="color: var(--text-dim); font-size: 13px; margin: auto;">Escribe una traducción arriba para generar chips interactivos...</span>';
+      this.selectedTranslationTokens.clear();
+      this.updateTranslationTargetDisplay();
+      return;
+    }
+
+    let chipsHtml = '';
+    tokens.forEach((token) => {
+      const isSelected = this.selectedTranslationTokens.has(token);
+      chipsHtml += `
+        <span class="token-chip ${isSelected ? 'selected' : ''}" data-tr-token="${token}" onclick="CreatorView.toggleTranslationToken('${token}')">
+          ${token}
+        </span>
+      `;
+    });
+
+    container.innerHTML = chipsHtml;
+    this.updateTranslationTargetDisplay();
+  }
+
+  static toggleTranslationToken(token) {
+    if (this.selectedTranslationTokens.has(token)) {
+      this.selectedTranslationTokens.delete(token);
+    } else {
+      this.selectedTranslationTokens.add(token);
+    }
+    const phraseTrInput = document.getElementById('creator-phrase-tr');
+    if (phraseTrInput) this.updateTranslationChips(phraseTrInput.value);
+  }
+
+  static updateTranslationTargetDisplay() {
+    const displayEl = document.getElementById('creator-tr-target-display');
+    const targetTrInput = document.getElementById('creator-target-tr');
+    if (!displayEl) return;
+
+    if (this.selectedTranslationTokens.size === 0) {
+      displayEl.textContent = '(Ninguno seleccionado)';
+      return;
+    }
+
+    const selectedText = [...this.selectedTranslationTokens].join(' ');
+    displayEl.textContent = selectedText;
+
+    if (targetTrInput && (!targetTrInput.value || targetTrInput.dataset.autoFilled === 'true')) {
+      targetTrInput.value = selectedText;
+      targetTrInput.dataset.autoFilled = 'true';
+    }
   }
 
   static insertMarkdown(openTag, closeTag) {
@@ -200,7 +291,9 @@ class CreatorView {
     if (notesInput) notesInput.value = '';
 
     this.selectedTokens.clear();
+    this.selectedTranslationTokens.clear();
     this.updateTokenChips('');
+    this.updateTranslationChips('');
   }
 
   static async saveAndContinue() {
@@ -231,8 +324,24 @@ class CreatorView {
       return;
     }
 
-    const parsed = window.PhraseSegmentParser.parse(phrase, [...this.selectedTokens]);
+    const parser = (typeof window !== 'undefined' && window.PhraseSegmentParser) || 
+                   (typeof PhraseSegmentParser !== 'undefined' ? PhraseSegmentParser : null);
+    const parsed = parser ? parser.parse(phrase, [...this.selectedTokens]) : { unifiedTargetText: [...this.selectedTokens].join(' ') };
     const wordId = 'w_' + Date.now();
+
+    // Section 4.3 & Rule 6: Highlight selected translation token in bold within phraseTranslation
+    let finalPhraseTranslation = phraseTranslation;
+    if (this.selectedTranslationTokens.size > 0 && finalPhraseTranslation) {
+      for (const token of this.selectedTranslationTokens) {
+        const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        finalPhraseTranslation = finalPhraseTranslation.replace(
+          new RegExp(`(?<!<b>)(?<![\\p{L}\\p{N}_])${escaped}(?![\\p{L}\\p{N}_])(?!<\\/b>)`, 'gui'),
+          '<b>$&</b>'
+        );
+      }
+    }
+
+    const finalTargetTranslation = targetTranslation || [...this.selectedTranslationTokens].join(' ');
 
     await window.api.createWord({
       id: wordId,
@@ -241,8 +350,8 @@ class CreatorView {
       targetTokens: [...this.selectedTokens],
       targetText: parsed.unifiedTargetText,
       notes,
-      phraseTranslation,
-      targetTranslation
+      phraseTranslation: finalPhraseTranslation,
+      targetTranslation: finalTargetTranslation
     });
 
     window.ModalManager.showToast(`Palabra "${parsed.unifiedTargetText}" guardada con éxito`, 'success');
@@ -251,5 +360,10 @@ class CreatorView {
 }
 
 CreatorView.init();
-window.CreatorView = CreatorView;
+if (typeof window !== 'undefined') {
+  window.CreatorView = CreatorView;
+}
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { CreatorView };
+}
 
