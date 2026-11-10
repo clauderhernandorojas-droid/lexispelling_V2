@@ -1,0 +1,104 @@
+/* ============================================================================
+   Lexispelling V2 - Master-Detail Deck Words Explorer Styles
+   Split layout on screens > 840px, search, filter chips, detail preview
+   ============================================================================ */
+
+.explorer-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.explorer-top-bar {
+  height: 56px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  flex-shrink: 0;
+}
+
+.explorer-master-detail {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Left Panel (List) */
+.explorer-master-panel {
+  width: 380px;
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  overflow: hidden;
+}
+
+.master-search-box {
+  padding: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.master-words-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.master-word-item {
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.master-word-item:hover {
+  background: var(--bg-card-hover);
+}
+
+.master-word-item.active {
+  background: var(--bg-card-active);
+  border-left: 3px solid var(--primary);
+}
+
+/* Right Panel (Detail) */
+.explorer-detail-panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 40px;
+  background: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.detail-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+}
+
+@media (max-width: 840px) {
+  .explorer-master-detail {
+    flex-direction: column;
+  }
+  .explorer-master-panel {
+    width: 100%;
+    height: 45%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+}
+

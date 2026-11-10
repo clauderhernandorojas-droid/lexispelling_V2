@@ -1,0 +1,536 @@
+/* ============================================================================
+   Lexispelling V2 - Quiz (Active In-Context Spelling) Styles
+   Strictly compliant with Sections 2.1 & 4.5 of Lexispelling Specifications
+   Real-time keystroke evaluation, monospace character slots, typographic space
+   Responsive & mobile-first containment (360px portrait support)
+   ============================================================================ */
+
+.quiz-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 20px;
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+/* Red Flash overlay on error (Section 4.5) */
+.red-flash-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(239, 68, 68, 0.22);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 50;
+  transition: opacity 120ms ease-out;
+}
+
+.red-flash-overlay.active {
+  opacity: 1;
+}
+
+/* Quiz Header (Section 4.5) */
+.quiz-header {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  box-sizing: border-box;
+}
+
+.quiz-progress-text {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.quiz-lives-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.life-heart {
+  font-size: 22px;
+  color: var(--error);
+  filter: drop-shadow(0 0 6px var(--error-glow));
+  transition: transform var(--transition-fast), opacity var(--transition-fast);
+}
+
+.life-heart.lost {
+  opacity: 0.2;
+  filter: grayscale(1);
+  transform: scale(0.85);
+}
+
+.life-count-badge {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  background: rgba(168, 85, 247, 0.18);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+}
+
+.quiz-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Hidden input to guarantee permanent focus on desktop/mobile (Section 4.5) */
+#quiz-hidden-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: -1;
+  border: none;
+  outline: none;
+}
+
+/* Central Spelling Arena (Section 4.5) */
+.quiz-arena {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: auto 0;
+  text-align: center;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* Sentence Context: Displays full sentence with target tokens replaced by character slots */
+.quiz-sentence-context {
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 2.3;
+  color: var(--text-main);
+  margin-bottom: 28px;
+  text-align: center;
+  word-break: normal;
+  overflow-wrap: break-word;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  padding: 0 10px;
+}
+
+/* Static tokens of the context sentence */
+.sentence-static-token {
+  color: #e2e8f0;
+  white-space: pre-wrap;
+  display: inline;
+  vertical-align: middle;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+/* Spelling Slots Group (Capsule holding the target word letter slots) */
+.spelling-slots-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  margin: 4px 6px;
+  padding: 4px 8px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1.5px dashed rgba(99, 102, 241, 0.35);
+  border-radius: var(--radius-md);
+  vertical-align: middle;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Sub-word unit for clean word-boundary line breaks in compound phrases */
+.spelling-word-unit {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 100%;
+}
+
+/* Interactive Monospace Character Slot (Section 4.5: Casilla de caracteres) */
+.char-slot {
+  min-width: clamp(26px, 4.5vw, 36px);
+  width: clamp(26px, 4.5vw, 36px);
+  height: 50px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  color: #64748b;
+  background: #151d30;
+  border: 1.5px solid #28354f;
+  border-bottom: 3.5px solid #64748b;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
+  transition: all var(--transition-fast);
+  user-select: none;
+  box-sizing: border-box;
+}
+
+/* Active Slot (Current typing target) */
+.char-slot.active {
+  border-color: var(--primary);
+  border-bottom: 3.5px solid var(--primary);
+  background: #1e2947;
+  color: #ffffff;
+  box-shadow: 0 0 14px var(--primary-glow), 0 2px 6px rgba(0, 0, 0, 0.4);
+  transform: translateY(-2px);
+  animation: pulseSlot 1.2s infinite alternate ease-in-out;
+}
+
+/* Filled Slot (Successfully typed character) */
+.char-slot.filled {
+  border-color: rgba(6, 182, 212, 0.5);
+  border-bottom: 3.5px solid var(--accent-cyan);
+  background: rgba(6, 182, 212, 0.12);
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.25);
+  transform: translateY(0);
+}
+
+/* Typographic Space Slot (Section 2.1 & 4.5) */
+.char-slot.space-slot {
+  min-width: clamp(20px, 3.5vw, 34px);
+  width: clamp(20px, 3.5vw, 34px);
+  font-size: 20px;
+  color: #64748b;
+  border-style: dashed;
+  border-color: #334155;
+  border-bottom: 3.5px dashed #64748b;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.char-slot.space-slot.active {
+  border-style: solid;
+  border-color: var(--primary);
+  border-bottom: 3.5px solid var(--primary);
+  color: #ffffff;
+  background: rgba(99, 102, 241, 0.15);
+  box-shadow: 0 0 14px var(--primary-glow);
+  transform: translateY(-2px);
+  animation: pulseSlot 1.2s infinite alternate ease-in-out;
+}
+
+.char-slot.space-slot.filled {
+  border-style: solid;
+  border-color: rgba(6, 182, 212, 0.5);
+  border-bottom: 3.5px solid var(--accent-cyan);
+  color: var(--accent-cyan);
+  background: rgba(6, 182, 212, 0.12);
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.25);
+  transform: translateY(0);
+}
+
+@keyframes pulseSlot {
+  0% {
+    transform: translateY(0);
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.3);
+  }
+  100% {
+    transform: translateY(-2px);
+    box-shadow: 0 0 16px rgba(99, 102, 241, 0.6);
+  }
+}
+
+/* Translations Box (Section 4.5) */
+.quiz-translations-box {
+  margin-top: 12px;
+  max-width: 650px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+}
+
+.phrase-translation-text {
+  font-size: 16px;
+  color: var(--text-muted);
+  font-style: italic;
+  line-height: 1.5;
+}
+
+.word-translation-text {
+  font-size: 15px;
+  color: var(--accent-cyan);
+  font-weight: 600;
+  transition: opacity var(--transition-fast);
+}
+
+.word-translation-text.hidden {
+  visibility: hidden;
+  opacity: 0;
+}
+
+/* Clue / Hint Panel (Section 2.2) */
+.quiz-hint-panel {
+  width: 100%;
+  max-width: 680px;
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
+}
+
+.btn-request-hint {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+  padding: 8px 20px;
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-request-hint:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.22);
+  transform: translateY(-1px);
+}
+
+.btn-request-hint:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.distorted-hint-card {
+  width: 100%;
+  max-width: 100%;
+  background: var(--bg-card);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius-md);
+  padding: 14px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  animation: fadeIn 200ms ease;
+}
+
+.distorted-phrase-mono {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  letter-spacing: 2px;
+  color: #fde68a;
+  text-align: center;
+  line-height: 1.6;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+.hint-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Post-Word Feedback Overlay (Section 4.5) */
+.post-word-overlay {
+  width: 100%;
+  max-width: 600px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+  box-sizing: border-box;
+  animation: fadeIn 200ms ease;
+}
+
+.post-word-overlay.success {
+  border-color: rgba(16, 185, 129, 0.4);
+  box-shadow: 0 4px 20px var(--success-glow);
+}
+
+.post-word-overlay.failure {
+  border-color: rgba(239, 68, 68, 0.4);
+  box-shadow: 0 4px 20px var(--error-glow);
+}
+
+.post-word-title {
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.post-word-title.success { color: var(--success); }
+.post-word-title.failure { color: var(--error); }
+
+.post-word-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================================================
+   RESPONSIVE DESIGN FOR NARROW & MOBILE SCREENS (<= 480px)
+   Prevents any horizontal overflow on 360px portrait devices
+   ============================================================================ */
+
+@media (max-width: 480px) {
+  .quiz-container {
+    padding: 16px 12px;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .quiz-header {
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+    max-width: 100%;
+  }
+
+  .quiz-arena {
+    max-width: 100%;
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  .quiz-sentence-context {
+    font-size: 19px;
+    line-height: 2.1;
+    padding: 0 4px;
+    margin-bottom: 20px;
+    max-width: 100%;
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  .spelling-slots-group {
+    gap: 3px;
+    margin: 3px 2px;
+    padding: 3px 5px;
+    max-width: 100%;
+  }
+
+  .spelling-word-unit {
+    gap: 3px;
+  }
+
+  /* Responsive character slot size (Item 2) */
+  .char-slot {
+    min-width: 26px;
+    width: 26px;
+    height: 38px;
+    font-size: 18px;
+    border-width: 1px;
+    border-bottom-width: 3px;
+    border-radius: 4px;
+  }
+
+  /* Responsive space slot size (Item 2) */
+  .char-slot.space-slot {
+    min-width: 18px;
+    width: 18px;
+    font-size: 15px;
+    border-bottom-width: 3px;
+  }
+
+  .phrase-translation-text {
+    font-size: 14px;
+  }
+
+  .word-translation-text {
+    font-size: 13px;
+  }
+
+  .distorted-hint-card {
+    padding: 10px 12px;
+    max-width: 100%;
+  }
+
+  .distorted-phrase-mono {
+    font-size: 13px;
+    letter-spacing: 1px;
+    word-break: break-all;
+  }
+
+  .post-word-overlay {
+    padding: 16px;
+    max-width: 100%;
+  }
+
+  .post-word-title {
+    font-size: 22px;
+  }
+
+  .post-word-actions {
+    gap: 8px;
+  }
+}
+
+/* Extra narrow phones (<= 360px portrait) */
+@media (max-width: 360px) {
+  .quiz-container {
+    padding: 12px 6px;
+  }
+
+  .quiz-sentence-context {
+    font-size: 17px;
+    line-height: 2.0;
+  }
+
+  .char-slot {
+    min-width: 22px;
+    width: 22px;
+    height: 34px;
+    font-size: 15px;
+    border-bottom-width: 2.5px;
+  }
+
+  .char-slot.space-slot {
+    min-width: 16px;
+    width: 16px;
+    font-size: 12px;
+  }
+}

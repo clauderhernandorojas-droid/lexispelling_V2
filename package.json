@@ -1,0 +1,24 @@
+{
+  "name": "lexispelling",
+  "version": "2.0.0",
+  "description": "Lexispelling V2 - Advanced Contextual Spelling & SRS System",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node test/run-tests.js"
+  },
+  "keywords": [
+    "spelling",
+    "srs",
+    "electron",
+    "language-learning"
+  ],
+  "author": "Antigravity & User",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^45.2.3"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  }
+}

@@ -1,0 +1,99 @@
+/* ============================================================================
+   Lexispelling V2 - Creator Lab Styles
+   Interactive token chips, markdown buttons, translation auto-switch
+   ============================================================================ */
+
+.creator-container {
+  max-width: 840px;
+  margin: 0 auto;
+  padding: 32px 24px 60px 24px;
+  width: 100%;
+}
+
+.creator-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.creator-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Interactive Token Chips */
+.token-chips-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--bg-input);
+  border-radius: var(--radius-md);
+  min-height: 48px;
+  border: 1px dashed var(--border-subtle);
+}
+
+.token-chip {
+  padding: 6px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.token-chip:hover {
+  border-color: var(--primary);
+  color: var(--text-main);
+}
+
+.token-chip.selected {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 2px 8px var(--primary-glow);
+}
+
+/* Markdown Toolbar */
+.markdown-toolbar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.md-btn {
+  padding: 4px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.md-btn:hover {
+  color: var(--text-main);
+  border-color: var(--border-hover);
+}
+
+/* Creator Form Actions */
+.creator-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 10px;
+}
+

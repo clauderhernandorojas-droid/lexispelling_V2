@@ -1,0 +1,138 @@
+/* ============================================================================
+   Lexispelling V2 - Final Report Styles (Informe Final)
+   Table with vivid red highlighted error letters, speed metrics, SRS shifts
+   ============================================================================ */
+
+.report-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 24px 60px 24px;
+  width: 100%;
+}
+
+.report-header {
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 20px;
+  margin-bottom: 24px;
+}
+
+.report-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* Stat Cards Row */
+.report-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.report-stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-card-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.stat-card-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.stat-card-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+/* Results Table */
+.report-table-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 28px;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 14px;
+}
+
+.report-table th {
+  background: var(--bg-input);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.report-table td {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-main);
+}
+
+.report-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Critical Feature: Failed letters highlighted in bright bold red */
+.word-feedback-cell {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  letter-spacing: 0.5px;
+}
+
+.char-error-highlight {
+  color: #ff3344;
+  font-weight: 900;
+  text-decoration: underline;
+  text-decoration-color: #ff3344;
+  background: rgba(239, 68, 68, 0.18);
+  padding: 1px 3px;
+  border-radius: 3px;
+}
+
+.evolution-up {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.evolution-down {
+  color: var(--error);
+  font-weight: 700;
+}
+
+.evolution-same {
+  color: var(--text-dim);
+}
+
+/* Actions Row */
+.report-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+}
+

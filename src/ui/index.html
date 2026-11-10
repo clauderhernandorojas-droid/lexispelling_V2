@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';">
+  <title>Lexispelling V2</title>
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="styles/base.css">
+  <link rel="stylesheet" href="styles/layout.css">
+  <link rel="stylesheet" href="styles/library.css">
+  <link rel="stylesheet" href="styles/flashcards.css">
+  <link rel="stylesheet" href="styles/quiz.css">
+  <link rel="stylesheet" href="styles/report.css">
+  <link rel="stylesheet" href="styles/creator.css">
+  <link rel="stylesheet" href="styles/explorer.css">
+  <link rel="stylesheet" href="styles/dashboard.css">
+</head>
+<body>
+  <div id="app-root">
+    <!-- Top AppBar (Section 4.1) -->
+    <header class="app-header" id="main-app-header">
+      <div class="header-left">
+        <button class="btn-icon" id="btn-hamburger" title="Perfil y Ajustes">☰</button>
+        <div class="brand-title" id="brand-home" title="Ir a Biblioteca">
+          <span>Lexispelling</span>
+          <span class="brand-badge">V2</span>
+        </div>
+        <span id="appbar-context-badge" class="badge badge-new" style="display: none; margin-left: 8px;"></span>
+      </div>
+
+      <div class="header-right">
+        <!-- Direct Return / Exit Button (Activated dynamically in Quiz, Flashcards, Creator, Explorer, etc.) -->
+        <button class="appbar-exit-btn" id="btn-appbar-exit" style="display: none;" title="Salir y volver a la Biblioteca">
+          ✕ Volver a Biblioteca
+        </button>
+
+        <!-- Quick Word Creator Button -->
+        <button class="btn-secondary" id="btn-appbar-creator" style="padding: 6px 14px; font-size: 13px; font-weight: 600;" title="Abrir Laboratorio de Creación">
+          + Crear Palabra
+        </button>
+
+        <!-- Dashboard Button -->
+        <button class="btn-icon" id="btn-dashboard-nav" title="Dashboard de Métricas">📊</button>
+        <!-- Sync Button -->
+        <button class="btn-icon" id="btn-sync" title="Sincronizar Datos">🔄</button>
+        
+        <!-- More Menu [...] -->
+        <div style="position: relative;">
+          <button class="btn-icon" id="btn-top-menu" title="Menú de Importación / Exportación">⋮</button>
+          <div class="dropdown-menu" id="top-menu-dropdown">
+            <button class="dropdown-item" id="menu-opt-import">📥 Importar Excel / CSV</button>
+            <button class="dropdown-item" id="menu-opt-export-csv">📤 Exportar Todo (CSV)</button>
+            <button class="dropdown-item" id="menu-opt-export-xlsx">📊 Exportar Todo (Excel)</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Views Container -->
+    <main class="view-container">
+      <section id="view-library" class="view-panel active"></section>
+      <section id="view-flashcards" class="view-panel"></section>
+      <section id="view-quiz" class="view-panel"></section>
+      <section id="view-report" class="view-panel"></section>
+      <section id="view-creator" class="view-panel"></section>
+      <section id="view-explorer" class="view-panel"></section>
+      <section id="view-dashboard" class="view-panel"></section>
+    </main>
+
+    <!-- Profile & Settings Drawer -->
+    <div class="drawer-backdrop" id="drawer-backdrop">
+      <div class="profile-drawer">
+        <div class="drawer-header">
+          <h3 class="drawer-title">Perfil & Configuración</h3>
+          <button class="btn-icon" id="drawer-close-btn">✕</button>
+        </div>
+
+        <!-- Quick Navigation Links (Requirement 2) -->
+        <div class="drawer-section">
+          <div class="drawer-section-title">Navegación Rápida</div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button class="drawer-nav-btn" onclick="window.app.navigate('library'); ProfileDrawer.close();">
+              <span style="font-size: 16px;">📚</span> Biblioteca de Mazos
+            </button>
+            <button class="drawer-nav-btn" onclick="window.app.navigate('creator'); ProfileDrawer.close();">
+              <span style="font-size: 16px;">✍️</span> Laboratorio de Creación
+            </button>
+            <button class="drawer-nav-btn" onclick="window.app.openExplorerDefault(); ProfileDrawer.close();">
+              <span style="font-size: 16px;">🔍</span> Explorador y Editor de Palabras
+            </button>
+            <button class="drawer-nav-btn" onclick="window.app.navigate('dashboard'); ProfileDrawer.close();">
+              <span style="font-size: 16px;">📊</span> Dashboard de Métricas
+            </button>
+          </div>
+        </div>
+
+        <div class="drawer-section">
+          <div class="drawer-section-title">Usuario</div>
+          <div class="form-group">
+            <label class="form-label">Nombre del Estudiante</label>
+            <input type="text" id="profile-name" class="form-control" />
+          </div>
+        </div>
+
+        <div class="drawer-section">
+          <div class="drawer-section-title">Audio y Pronunciación</div>
+          <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+            <label class="form-label" style="margin: 0;">Sonidos de Quiz (Web Audio)</label>
+            <input type="checkbox" id="profile-sound-toggle" style="width: 18px; height: 18px; cursor: pointer;" />
+          </div>
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+              <label class="form-label" style="margin: 0;">Velocidad TTS</label>
+              <span id="profile-tts-speed-val" style="font-size: 13px; font-weight: 700; color: var(--accent-cyan);">0.85x</span>
+            </div>
+            <input type="range" id="profile-tts-speed" min="0.2" max="1.0" step="0.05" value="0.85" style="width: 100%; cursor: pointer;" />
+          </div>
+        </div>
+
+        <div class="drawer-section">
+          <div class="drawer-section-title">Objetivos & Disciplina</div>
+          <div class="form-group">
+            <label class="form-label">Meta Diaria de Estudio (Horas)</label>
+            <input type="number" id="profile-daily-goal" class="form-control" step="0.1" min="0.1" max="10" />
+          </div>
+        </div>
+
+        <div class="drawer-section">
+          <div class="drawer-section-title">Modo Tutor / Vinculación</div>
+          <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+            <label class="form-label" style="margin: 0;">Activar Modo Tutor</label>
+            <input type="checkbox" id="profile-tutor-toggle" style="width: 18px; height: 18px; cursor: pointer;" />
+          </div>
+          <div style="font-size: 12px; color: var(--text-dim); margin-top: 6px;">
+            Código de vinculación único: <strong id="profile-tutor-code" style="color: var(--primary); font-family: var(--font-mono); font-size: 14px;">LEX789</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Dialog System -->
+    <div class="modal-backdrop" id="modal-backdrop">
+      <div class="modal-card">
+        <h3 id="modal-title" style="font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 14px;"></h3>
+        <div id="modal-body" style="font-size: 14px; color: var(--text-muted); line-height: 1.5; margin-bottom: 24px;"></div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button class="btn-secondary" id="modal-cancel-btn">Cancelar</button>
+          <button class="btn-primary" id="modal-confirm-btn">Aceptar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div id="toast-container"></div>
+  </div>
+
+  <!-- Domain & Engine Scripts -->
+  <script src="../state/store.js"></script>
+  <script src="../engine/phraseParser.js"></script>
+  <script src="../engine/hintEngine.js"></script>
+  <script src="../engine/audioSynth.js"></script>
+  <script src="../engine/tts.js"></script>
+  <script src="../services/activeTimer.js"></script>
+
+  <!-- UI Components & Views -->
+  <script src="components/modal.js"></script>
+  <script src="components/drawer.js"></script>
+  <script src="views/libraryView.js"></script>
+  <script src="views/flashcardsView.js"></script>
+  <script src="views/quizView.js"></script>
+  <script src="views/reportView.js"></script>
+  <script src="views/creatorView.js"></script>
+  <script src="views/explorerView.js"></script>
+  <script src="views/dashboardView.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
+
