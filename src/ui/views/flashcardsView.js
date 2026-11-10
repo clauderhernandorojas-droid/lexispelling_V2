@@ -43,12 +43,14 @@ class FlashcardsView {
 
   static updateCardUi() {
     const container = document.getElementById('view-flashcards');
+    if (!container) return;
     const word = this.session.words[this.currentIndex];
     const total = this.session.words.length;
     this.reviewedCardIds.add(word.id);
 
-    // Highlight target word in phrase
-    const highlightedPhrase = this.formatHighlightedPhrase(word.phrase, word.targetText);
+    // Rule 1: Discontinuous tokens separated by ellipsis ("want... be") vs contiguous ("give up")
+    const displayTarget = this.getDisplayTargetText(word);
+    const highlightedPhrase = this.formatHighlightedPhrase(word);
 
     let html = `
       <div class="flashcards-container">
@@ -66,15 +68,15 @@ class FlashcardsView {
           <div class="card-3d ${this.isFlipped ? 'flipped' : ''}" id="flashcard-3d">
             <!-- Front Face -->
             <div class="card-face card-face-front">
-              <div class="card-id-badge mono">${word.id}</div>
+              <div class="card-id-badge mono">${FlashcardsView.escapeHtml(word.id)}</div>
               <div class="card-front-content">
-                <div class="card-target-word">${word.targetText}</div>
+                <div class="card-target-word">${FlashcardsView.escapeHtml(displayTarget)}</div>
                 <div class="card-phrase-context">${highlightedPhrase}</div>
                 <div class="card-audio-controls" onclick="event.stopPropagation()">
-                  <button class="btn-audio-pill" onclick="FlashcardsView.playWordAudio('${word.targetText}')">
+                  <button class="btn-audio-pill" onclick="FlashcardsView.playWordAudio('${FlashcardsView.escapeHtml(word.targetText).replace(/'/g, "\\'")}')">
                     🔊 Palabra (1 / W)
                   </button>
-                  <button class="btn-audio-pill" onclick="FlashcardsView.playPhraseAudio('${word.phrase.replace(/'/g, "\\'")}')">
+                  <button class="btn-audio-pill" onclick="FlashcardsView.playPhraseAudio('${FlashcardsView.escapeHtml(word.phrase).replace(/'/g, "\\'")}')">
                     🎧 Frase Completa (2 / S)
                   </button>
                 </div>
@@ -222,12 +224,59 @@ class FlashcardsView {
     }
   }
 
-  static formatHighlightedPhrase(phrase, target) {
-    if (!phrase) return '';
-    if (!target) return phrase;
-    const escaped = target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`(${escaped})`, 'gi');
-    return phrase.replace(regex, '<mark>$1</mark>');
+  static getDisplayTargetText(word) {
+    if (!word) return '';
+    try {
+      const parser = (typeof window !== 'undefined' && window.PhraseSegmentParser) || 
+                     (typeof PhraseSegmentParser !== 'undefined' ? PhraseSegmentParser : null);
+      if (parser && word.phrase) {
+        const parsed = parser.parse(word.phrase, word.targetTokens, word.targetText);
+        if (parsed && Array.isArray(parsed.segments)) {
+          const targetSegs = parsed.segments.filter(s => s.isTarget).map(s => s.text.trim()).filter(Boolean);
+          if (targetSegs.length > 1) {
+            return targetSegs.join('... ');
+          } else if (targetSegs.length === 1) {
+            return targetSegs[0];
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('FlashcardsView getDisplayTargetText error:', e);
+    }
+    return word.targetText || '';
+  }
+
+  static formatHighlightedPhrase(word) {
+    if (!word || !word.phrase) return '';
+    try {
+      const parser = (typeof window !== 'undefined' && window.PhraseSegmentParser) || 
+                     (typeof PhraseSegmentParser !== 'undefined' ? PhraseSegmentParser : null);
+      if (parser) {
+        const parsed = parser.parse(word.phrase, word.targetTokens, word.targetText);
+        if (parsed && Array.isArray(parsed.segments)) {
+          return parsed.segments.map(seg => {
+            if (seg.isTarget) {
+              return `<mark>${FlashcardsView.escapeHtml(seg.text)}</mark>`;
+            }
+            return FlashcardsView.escapeHtml(seg.text);
+          }).join('');
+        }
+      }
+    } catch (e) {
+      console.warn('FlashcardsView formatHighlightedPhrase error:', e);
+    }
+    const escaped = (word.targetText || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return FlashcardsView.escapeHtml(word.phrase).replace(new RegExp(`(${escaped})`, 'gi'), '<mark>$1</mark>');
+  }
+
+  static escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   static renderSimpleMarkdown(text) {
@@ -240,5 +289,10 @@ class FlashcardsView {
 }
 
 FlashcardsView.init();
-window.FlashcardsView = FlashcardsView;
+if (typeof window !== 'undefined') {
+  window.FlashcardsView = FlashcardsView;
+}
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { FlashcardsView };
+}
 

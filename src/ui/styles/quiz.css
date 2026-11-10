@@ -339,16 +339,23 @@
   animation: fadeIn 200ms ease;
 }
 
-.distorted-phrase-mono {
-  font-family: var(--font-mono);
-  font-size: 16px;
-  letter-spacing: 2px;
+.distorted-phrase-mono,
+.hint-distorted-phrase {
+  font-family: 'JetBrains Mono', 'Fira Code', Menlo, Monaco, Consolas, monospace;
+  font-size: 18px;
+  line-height: 1.6;
   color: #fde68a;
   text-align: center;
-  line-height: 1.6;
-  word-break: break-word;
+  word-break: normal;
   overflow-wrap: break-word;
   max-width: 100%;
+  padding: 6px 10px;
+}
+
+/* Individual word unit: never splits in half across lines */
+.distorted-word {
+  display: inline-block;
+  white-space: nowrap;
 }
 
 .hint-toggle-row {
@@ -357,7 +364,25 @@
   gap: 8px;
 }
 
-/* Post-Word Feedback Overlay (Section 4.5) */
+/* Last Chance Badge (Rule 2) */
+.life-count-badge.last-chance-badge {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  margin-left: 8px;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  animation: pulseLastChance 1.5s infinite ease-in-out;
+}
+
+@keyframes pulseLastChance {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(0.97); }
+}
+
+/* Post-Word Feedback Overlay (Section 4.5 & Rule 3) */
 .post-word-overlay {
   width: 100%;
   max-width: 600px;
@@ -368,7 +393,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   margin-top: 20px;
   box-sizing: border-box;
   animation: fadeIn 200ms ease;
@@ -385,12 +410,95 @@
 }
 
 .post-word-title {
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 800;
 }
 
 .post-word-title.success { color: var(--success); }
 .post-word-title.failure { color: var(--error); }
+
+.post-word-target-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: #fff;
+  font-family: var(--font-mono);
+  letter-spacing: 0.5px;
+  text-align: center;
+}
+
+.post-word-target-translation {
+  font-size: 15px;
+  color: var(--accent-cyan);
+  font-weight: 600;
+  margin-top: -6px;
+  text-align: center;
+}
+
+.post-word-phrase-box {
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  width: 100%;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.post-word-phrase-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.5;
+  margin-bottom: 6px;
+}
+
+.post-word-phrase-translation {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+mark.quiz-highlight-target {
+  background: rgba(56, 189, 248, 0.25);
+  color: #38bdf8;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 4px;
+  border-bottom: 2px solid #38bdf8;
+}
+
+.post-word-notes-card {
+  width: 100%;
+  background: rgba(147, 51, 234, 0.08);
+  border: 1px solid rgba(147, 51, 234, 0.3);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  text-align: left;
+  box-sizing: border-box;
+  animation: fadeIn 180ms ease;
+}
+
+.post-word-notes-header {
+  font-size: 12px;
+  font-weight: 700;
+  color: #c084fc;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.post-word-notes-body {
+  font-size: 14px;
+  color: #e2e8f0;
+  line-height: 1.5;
+}
+
+.post-word-key-hint {
+  font-size: 10px;
+  opacity: 0.65;
+  margin-left: 2px;
+  font-family: var(--font-mono);
+}
 
 .post-word-actions {
   display: flex;
@@ -398,6 +506,7 @@
   gap: 12px;
   flex-wrap: wrap;
   justify-content: center;
+  margin-top: 4px;
 }
 
 @keyframes fadeIn {
@@ -489,10 +598,16 @@
     max-width: 100%;
   }
 
-  .distorted-phrase-mono {
-    font-size: 13px;
-    letter-spacing: 1px;
-    word-break: break-all;
+  .distorted-phrase-mono,
+  .hint-distorted-phrase {
+    font-size: 15px;
+    line-height: 1.5;
+    padding: 4px 6px;
+  }
+
+  .distorted-word {
+    display: inline-block;
+    white-space: nowrap;
   }
 
   .post-word-overlay {
@@ -502,6 +617,14 @@
 
   .post-word-title {
     font-size: 22px;
+  }
+
+  .post-word-target-title {
+    font-size: 22px;
+  }
+
+  .post-word-phrase-text {
+    font-size: 16px;
   }
 
   .post-word-actions {

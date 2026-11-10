@@ -16,6 +16,7 @@ class QuizView {
     this.failedLetters = [];
     this.activeHint = null;
     this.showHintTranslation = false;
+    this.showPostWordNotes = false;
     this.isPostWordPhase = false;
     this.lastWordSuccess = false;
     this.allDeckWords = [];
@@ -350,6 +351,7 @@ class QuizView {
       }
 
       this.isPostWordPhase = false;
+      this.showPostWordNotes = false;
       this.lastWordSuccess = false;
       this.activeHint = null;
       this.showHintTranslation = false;
@@ -426,6 +428,9 @@ class QuizView {
           const isLost = i >= this.livesRemaining;
           livesHtml += `<span class="life-heart ${isLost ? 'lost' : ''}">❤</span>`;
         }
+        if (this.livesRemaining === 0) {
+          livesHtml += `<span class="life-count-badge last-chance-badge" title="Última oportunidad antes de fallar">¡Última Oportunidad!</span>`;
+        }
       }
 
       // Build sentence segments with slots synchronized 1-to-1 with targetString
@@ -492,8 +497,8 @@ class QuizView {
           <!-- Quiz Header with Direct Return Button -->
           <div class="quiz-header">
             <div style="display: flex; align-items: center; gap: 12px;">
-              <button class="appbar-exit-btn" onclick="QuizView.exitToLibrary()" title="Salir y volver a la Biblioteca">
-                ✕ Volver a la Biblioteca
+              <button class="appbar-exit-btn" onclick="QuizView.confirmExit()" title="Salir del Quiz">
+                ✕ Salir del Quiz
               </button>
               <div class="quiz-progress-text">
                 ${this.session.isReQuiz ? '🔄 RE-QUIZ: ' : ''}Palabra ${wordNum} de ${totalWords}
@@ -530,16 +535,16 @@ class QuizView {
               ${!this.activeHint ? `
                 <button class="btn-request-hint" id="btn-request-hint" 
                   onclick="QuizView.requestHint()" 
-                  ${(!this.hasErrorOnCurrentSlot || !this.hintAvailableForCurrentSlot || this.livesRemaining <= 0) ? 'disabled' : ''}>
-                  🔍 Pedir Pista Contextual ${this.hasErrorOnCurrentSlot && this.hintAvailableForCurrentSlot && this.livesRemaining > 0 ? '(Disponible)' : '(Requiere error en casilla)'}
+                  ${(!this.hasErrorOnCurrentSlot || !this.hintAvailableForCurrentSlot) ? 'disabled' : ''}>
+                  🔍 Pedir Pista Contextual ${this.hasErrorOnCurrentSlot && this.hintAvailableForCurrentSlot ? '(Disponible)' : '(Requiere error en casilla)'}
                 </button>
               ` : `
                 <div class="distorted-hint-card">
                   <div style="font-size: 11px; text-transform: uppercase; color: var(--warning); font-weight: 700; letter-spacing: 0.5px;">
                     ${QuizView.escapeHtml(this.activeHint.title || 'Pista Contextual Distorsionada')}
                   </div>
-                  <div class="distorted-phrase-mono">
-                    ${QuizView.escapeHtml(this.showHintTranslation ? this.activeHint.phraseTranslation : this.activeHint.distortedPhrase)}
+                  <div class="distorted-phrase-mono hint-distorted-phrase">
+                    ${this.showHintTranslation ? QuizView.escapeHtml(this.activeHint.phraseTranslation) : (this.activeHint.distortedHtml || QuizView.escapeHtml(this.activeHint.distortedPhrase))}
                   </div>
                   <div class="hint-toggle-row">
                     <button class="btn-secondary" style="font-size: 11px; padding: 4px 10px;" onclick="QuizView.toggleHintDisplay()">
@@ -550,19 +555,55 @@ class QuizView {
               `}
             </div>
 
-            <!-- Post-Word Feedback Overlay -->
+            <!-- Post-Word Feedback Overlay (Punto 3) -->
             ${this.isPostWordPhase ? `
               <div class="post-word-overlay ${this.lastWordSuccess ? 'success' : 'failure'}">
                 <div class="post-word-title ${this.lastWordSuccess ? 'success' : 'failure'}">
-                  ${this.lastWordSuccess ? '✓ ¡Excelente!' : '✗ Palabra Fallada'}
+                  ${this.lastWordSuccess ? '✓ ¡Correcto!' : '✗ Palabra Fallada'}
                 </div>
-                <div style="font-size: 26px; font-weight: 800; color: #fff; font-family: var(--font-mono);">
+
+                <div class="post-word-target-title">
                   ${QuizView.escapeHtml(this.currentWord.targetText)}
                 </div>
+                ${this.currentWord.targetTranslation ? `
+                  <div class="post-word-target-translation">
+                    💡 ${QuizView.escapeHtml(this.currentWord.targetTranslation)}
+                  </div>
+                ` : ''}
+
+                <div class="post-word-phrase-box">
+                  <div class="post-word-phrase-text">
+                    ${QuizView.formatHighlightedPhrase(this.currentWord)}
+                  </div>
+                  ${this.currentWord.phraseTranslation ? `
+                    <div class="post-word-phrase-translation">
+                      ${QuizView.escapeHtml(this.currentWord.phraseTranslation)}
+                    </div>
+                  ` : ''}
+                </div>
+
+                ${(this.showPostWordNotes && this.currentWord.notes && this.currentWord.notes.trim()) ? `
+                  <div class="post-word-notes-card">
+                    <div class="post-word-notes-header">📝 Anotación Cultural / Gramatical</div>
+                    <div class="post-word-notes-body">${QuizView.renderSimpleMarkdown(QuizView.escapeHtml(this.currentWord.notes))}</div>
+                  </div>
+                ` : ''}
+
                 <div class="post-word-actions">
-                  <button class="btn-secondary" onclick="QuizView.speakTargetWord()">🔊 Palabra</button>
-                  <button class="btn-secondary" onclick="QuizView.speakContextPhrase()">🎧 Frase</button>
-                  <button class="btn-primary" onclick="QuizView.nextWord()">Siguiente [Enter] →</button>
+                  <button class="btn-secondary" onclick="QuizView.speakTargetWord()" title="Escuchar pronunciación de la palabra (Tecla 1)">
+                    🔊 Palabra <span class="post-word-key-hint">[1]</span>
+                  </button>
+                  <button class="btn-secondary" onclick="QuizView.speakContextPhrase()" title="Escuchar pronunciación de la frase (Tecla 2)">
+                    🎧 Frase <span class="post-word-key-hint">[2]</span>
+                  </button>
+                  ${(this.currentWord.notes && this.currentWord.notes.trim()) ? `
+                    <button class="btn-secondary ${this.showPostWordNotes ? 'active' : ''}" onclick="QuizView.togglePostWordNotes()" title="Ver u ocultar anotación (Tecla 3)">
+                      📝 ${this.showPostWordNotes ? 'Ocultar Nota' : 'Ver Nota'} <span class="post-word-key-hint">[3]</span>
+                    </button>
+                  ` : ''}
+                  <button class="btn-primary" onclick="QuizView.nextWord()" title="Avanzar a la siguiente palabra (Enter)">
+                    Siguiente Palabra [Enter] →
+                  </button>
                 </div>
               </div>
             ` : ''}
@@ -617,10 +658,7 @@ class QuizView {
   }
 
   static exitToLibrary() {
-    this.destroy();
-    window.store.set('studySession', null);
-    window.app.navigate('library');
-    window.ModalManager.showToast('Sesión de Quiz finalizada. Has vuelto a la Biblioteca.', 'info');
+    this.confirmExit();
   }
 
   static handleKeyDown(e) {
@@ -628,13 +666,24 @@ class QuizView {
       if (e.code === 'Enter' || e.key === 'Enter') {
         e.preventDefault();
         this.nextWord();
+      } else if (e.key === '1' || e.key.toLowerCase() === 'w') {
+        e.preventDefault();
+        this.speakTargetWord();
+      } else if (e.key === '2' || e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        this.speakContextPhrase();
+      } else if (e.key === '3' || e.key.toLowerCase() === 'n') {
+        if (this.currentWord && this.currentWord.notes) {
+          e.preventDefault();
+          this.togglePostWordNotes();
+        }
       }
       return;
     }
 
     if (e.code === 'Escape' || e.key === 'Escape') {
       e.preventDefault();
-      this.exitToLibrary();
+      this.confirmExit();
       return;
     }
 
@@ -686,19 +735,22 @@ class QuizView {
       this.hintAvailableForCurrentSlot = true;
       this.currentSlotFailedLetter = expectedChar;
 
-      if (this.livesRemaining > 0) {
-        this.livesRemaining--;
-      }
-
-      // Check if lives exhausted
-      if (this.livesRemaining <= 0 && this.initialLives > 0) {
-        this.handleWordFailure();
-      } else if (this.initialLives === 0) {
+      // Rule 2 (Gap Analysis Punto 2): Protection of the last life
+      if (this.initialLives === 0) {
         // Mastery / Level 4 maintenance rule
         this.handleMaintenanceFailure();
-      } else {
-        this.updateUi();
+        return;
       }
+
+      // If user was already on their last chance (0 lives remaining) and makes another mistake:
+      if (this.livesRemaining === 0) {
+        this.handleWordFailure();
+        return;
+      }
+
+      // Decrement lives: 3 -> 2 -> 1 -> 0 (enters last chance)
+      this.livesRemaining--;
+      this.updateUi();
     }
   }
 
@@ -712,7 +764,7 @@ class QuizView {
   }
 
   static requestHint() {
-    if (!this.hasErrorOnCurrentSlot || !this.hintAvailableForCurrentSlot || this.livesRemaining <= 0) return;
+    if (!this.hasErrorOnCurrentSlot || !this.hintAvailableForCurrentSlot) return;
     const failedLetter = this.currentSlotFailedLetter || (this.failedLetters.length > 0 ? this.failedLetters[this.failedLetters.length - 1] : null);
     if (!failedLetter) return;
 
@@ -738,7 +790,7 @@ class QuizView {
       this.hintAvailableForCurrentSlot = false; // Se consume 1 sola pista por cada fallo cometido (Section 2.2)
       this.updateUi();
     } else {
-      window.ModalManager.showToast('No hay frases alternativas para generar pista con esta letra', 'info');
+      window.ModalManager.showToast('No hay frases adicionales en este mazo con esta letra', 'info');
     }
   }
 
@@ -756,6 +808,106 @@ class QuizView {
   static speakContextPhrase() {
     if (window.ttsService && this.currentWord) {
       window.ttsService.speak(this.currentWord.phrase);
+    }
+  }
+
+  static togglePostWordNotes() {
+    this.showPostWordNotes = !this.showPostWordNotes;
+    this.updateUi();
+  }
+
+  static formatHighlightedPhrase(word) {
+    if (!word || !word.phrase) return '';
+    try {
+      const parser = QuizView.getParser();
+      if (parser) {
+        const parsed = parser.parse(word.phrase, word.targetTokens, word.targetText);
+        if (parsed && Array.isArray(parsed.segments)) {
+          return parsed.segments.map(seg => {
+            if (seg.isTarget) {
+              return `<mark class="quiz-highlight-target">${QuizView.escapeHtml(seg.text)}</mark>`;
+            }
+            return QuizView.escapeHtml(seg.text);
+          }).join('');
+        }
+      }
+    } catch (e) {
+      console.warn('QuizView formatHighlightedPhrase error:', e);
+    }
+    const escaped = (word.targetText || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return QuizView.escapeHtml(word.phrase).replace(new RegExp(`(${escaped})`, 'gi'), '<mark class="quiz-highlight-target">$1</mark>');
+  }
+
+  static renderSimpleMarkdown(text) {
+    if (!text) return '';
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/__(.*?)__/g, '<u>$1</u>')
+      .replace(/_(.*?)_/g, '<em>$1</em>');
+  }
+
+  static confirmExit() {
+    const evaluatedCount = (this.session && this.session.sessionResults) ? this.session.sessionResults.length : 0;
+
+    if (evaluatedCount === 0) {
+      if (typeof window !== 'undefined' && window.ModalManager) {
+        window.ModalManager.openModal({
+          title: '¿Deseas salir del Quiz?',
+          bodyHtml: `
+            <p>Aún no has completado ninguna palabra en esta sesión.</p>
+            <p style="margin-top: 8px; color: var(--text-muted); font-size: 13px;">
+              Si sales ahora volverás a la Biblioteca sin registrar cambios de progreso en tu mazo.
+            </p>
+          `,
+          confirmText: 'Sí, volver a la Biblioteca',
+          cancelText: 'Continuar sesión',
+          onConfirm: () => {
+            this.destroy();
+            window.store.set('studySession', null);
+            window.app.navigate('library');
+            window.ModalManager.showToast('Sesión cancelada. Has vuelto a la Biblioteca.', 'info');
+            return true;
+          }
+        });
+      }
+      return;
+    }
+
+    if (typeof window !== 'undefined' && window.ModalManager) {
+      window.ModalManager.openModal({
+        title: '¿Deseas salir del Quiz?',
+        bodyHtml: `
+          <p><strong>¿Deseas salir? Guardaremos tu progreso actual y generaremos tu informe.</strong></p>
+          <p style="margin-top: 10px; color: var(--text-muted); font-size: 13px;">
+            Has evaluado <strong>${evaluatedCount}</strong> palabra(s) en esta sesión.
+            Las palabras no contestadas permanecerán intactas en estado pendiente en tu mazo.
+          </p>
+        `,
+        confirmText: 'Guardar y Ver Informe',
+        cancelText: 'Continuar sesión',
+        onConfirm: async () => {
+          await this.handleEmergencyExit();
+          return true;
+        }
+      });
+    }
+  }
+
+  static async handleEmergencyExit() {
+    this.destroy();
+    if (this.session && this.session.sessionResults && this.session.sessionResults.length > 0) {
+      await this.finalizeSessionStats();
+      if (typeof window !== 'undefined') {
+        window.store.set('studySession', this.session);
+        window.app.navigate('report');
+        window.ModalManager.showToast('Progreso parcial guardado. Mostrando informe.', 'success');
+      }
+    } else {
+      if (typeof window !== 'undefined') {
+        window.store.set('studySession', null);
+        window.app.navigate('library');
+        window.ModalManager.showToast('Sesión finalizada. Has vuelto a la Biblioteca.', 'info');
+      }
     }
   }
 

@@ -1,102 +1,114 @@
 // ============================================================================
 // Lexispelling V2 - Contextual Distorted Clues Engine
 // Generates dynamic masked sentence hints from peer words in the deck
+// Strictly compliant with Section 2.2 of Lexispelling Specifications
 // ============================================================================
 
 class HintEngine {
+  static escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   /**
-   * Generates a distorted contextual clue
+   * Generates a distorted contextual clue strictly from peer words in the deck.
+   * NEVER uses the current active word.
+   * 
    * @param {string} failedLetter - The letter where the user made a mistake
-   * @param {Object} currentWord - The current word being evaluated
+   * @param {Object} currentWord - The current word being evaluated (strictly excluded)
    * @param {Array<Object>} deckWords - All words in the current deck/session
-   * @returns {Object|null} { distortedPhrase, rawPhrase, phraseTranslation, maskedLetter }
+   * @returns {Object|null} { title, distortedPhrase, distortedHtml, rawPhrase, phraseTranslation, maskedLetter }
    */
   static generateDistortedHint(failedLetter, currentWord, deckWords = []) {
-    if (!failedLetter) return null;
-    const targetChar = failedLetter.toLowerCase();
+    if (!failedLetter || !currentWord) return null;
+    const targetChar = String(failedLetter).toLowerCase();
 
-    // 1. Filter other candidate words containing the target character
+    // 1. Strict Exclusion (Section 2.2):
+    // Must search in the REST of the words in the deck (candidate.id !== currentWord.id).
+    // NEVER fallback to the current word being evaluated.
     const candidates = deckWords.filter(w => {
-      if (w.id === currentWord.id) return false;
-      if (!w.phrase) return false;
+      if (!w || !w.id || !w.phrase) return false;
+      if (w.id === currentWord.id) return false; // Strictly exclude current word
       return w.phrase.toLowerCase().includes(targetChar);
     });
 
-    let chosenCandidate = null;
-    if (candidates.length > 0) {
-      const idx = Math.floor(Math.random() * candidates.length);
-      chosenCandidate = candidates[idx];
-    } else {
-      // Fallback: use current word's sentence if no other word contains it
-      if (currentWord && currentWord.phrase && currentWord.phrase.toLowerCase().includes(targetChar)) {
-        chosenCandidate = currentWord;
-      } else {
-        return null;
-      }
+    if (candidates.length === 0) {
+      // Neutral signal: no other candidate phrase in deck contains this letter
+      return null;
     }
 
+    const chosenCandidate = candidates[Math.floor(Math.random() * candidates.length)];
     const rawPhrase = chosenCandidate.phrase;
     const phraseTranslation = chosenCandidate.phraseTranslation || 'Sin traducción disponible';
 
-    // Find all indices where failedLetter appears (case-insensitive)
-    const letterIndices = [];
-    for (let i = 0; i < rawPhrase.length; i++) {
-      if (rawPhrase[i].toLowerCase() === targetChar) {
-        letterIndices.push(i);
-      }
-    }
-
-    if (letterIndices.length === 0) return null;
-
-    // Pick one of the failed letter occurrences to mask
-    const primaryMaskIdx = letterIndices[Math.floor(Math.random() * letterIndices.length)];
-
-    // Pick 2 other letters at random to mask
+    // 2. Identify exact character indices for mandatory target masking & other candidate letters
+    const targetCharIndices = [];
     const otherLetterIndices = [];
+
     for (let i = 0; i < rawPhrase.length; i++) {
-      if (i !== primaryMaskIdx && /[\p{L}\p{N}]/u.test(rawPhrase[i])) {
-        otherLetterIndices.push(i);
+      const ch = rawPhrase[i];
+      if (/[\p{L}\p{N}]/u.test(ch)) {
+        if (ch.toLowerCase() === targetChar) {
+          targetCharIndices.push(i);
+        } else {
+          otherLetterIndices.push(i);
+        }
       }
     }
 
-    // Shuffle other letter indices
+    if (targetCharIndices.length === 0) return null;
+
+    // 3. Strict masking logic (Section 2.2):
+    // "Enmascara obligatoriamente la posición donde aparece la letra fallada
+    // y selecciona al azar otras 2 letras más de la frase para enmascararlas con guiones bajos _"
+    const maskedIndicesSet = new Set();
+
+    // Mandatory: mask all occurrences of the target failed letter so it is NEVER exposed in plain text
+    for (const idx of targetCharIndices) {
+      maskedIndicesSet.add(idx);
+    }
+
+    // Shuffle other letter indices to pick 2 additional random letters
     for (let i = otherLetterIndices.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [otherLetterIndices[i], otherLetterIndices[j]] = [otherLetterIndices[j], otherLetterIndices[i]];
     }
 
-    const maskedIndicesSet = new Set();
-    maskedIndicesSet.add(primaryMaskIdx);
     if (otherLetterIndices.length > 0) maskedIndicesSet.add(otherLetterIndices[0]);
     if (otherLetterIndices.length > 1) maskedIndicesSet.add(otherLetterIndices[1]);
 
-    // Format output: each letter separated by space, words separated by double space
-    // e.g. "H e l l o   w o r l d" or "_ e _ l o   _ o r l d"
-    const words = rawPhrase.split(/\s+/);
-    let charScanPos = 0;
-    const formattedWords = [];
-
-    for (const w of words) {
-      const letters = [];
-      for (let i = 0; i < w.length; i++) {
-        // Find exact index in original string
-        const originalIndex = rawPhrase.indexOf(w, charScanPos) + i;
-        if (maskedIndicesSet.has(originalIndex)) {
-          letters.push('_');
-        } else {
-          letters.push(w[i]);
-        }
+    // 4. Construct natural masked phrase: continuous words, standard single spaces
+    // DO NOT separate individual characters with spaces (e.g. no .split('').join(' ')).
+    let distortedPhrase = '';
+    for (let i = 0; i < rawPhrase.length; i++) {
+      if (maskedIndicesSet.has(i)) {
+        distortedPhrase += '_';
+      } else {
+        distortedPhrase += rawPhrase[i];
       }
-      charScanPos = rawPhrase.indexOf(w, charScanPos) + w.length;
-      formattedWords.push(letters.join(' '));
     }
 
-    // Section 2.2: "Formatea la salida separando cada letra con un espacio y palabras con doble espacio"
-    const distortedPhrase = formattedWords.join('  ');
+    // Wrap each word token in <span class="distorted-word"> so words do not break mid-word,
+    // while preserving exact standard whitespace between words.
+    const distortedHtml = distortedPhrase
+      .split(/(\s+)/)
+      .map(segment => {
+        if (/^\s+$/.test(segment)) {
+          return segment; // Retain exact space/whitespace characters
+        }
+        return `<span class="distorted-word">${HintEngine.escapeHtml(segment)}</span>`;
+      })
+      .join('');
 
     return {
       title: 'Pista Contextual Distorsionada',
       distortedPhrase,
+      distortedHtml,
       rawPhrase,
       phraseTranslation,
       maskedLetter: failedLetter
@@ -113,4 +125,3 @@ if (typeof global !== 'undefined') {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { HintEngine };
 }
-

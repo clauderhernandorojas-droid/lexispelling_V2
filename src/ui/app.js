@@ -43,7 +43,13 @@ class App {
     // Exit / Return button in Top AppBar (visible during Quiz, Flashcards, Creator, Explorer, etc.)
     const btnExit = document.getElementById('btn-appbar-exit');
     if (btnExit) {
-      btnExit.onclick = () => this.exitSessionToLibrary();
+      btnExit.onclick = () => {
+        if (this.currentViewName === 'quiz' && window.QuizView && window.QuizView.confirmExit) {
+          window.QuizView.confirmExit();
+        } else {
+          this.exitSessionToLibrary();
+        }
+      };
     }
 
     // Quick New Word Creator Button in AppBar
